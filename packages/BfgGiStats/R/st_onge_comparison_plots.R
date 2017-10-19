@@ -14,8 +14,8 @@ rhombus_integration <- function(x, y) {
 
 st_onge_comparison_plot <- function(gi_data_old,
                                     gi_data_new,
-                                    control_name = "GIS_ij.DMSO",
-                                    condition_name = "GIS_ij.MMS"){
+                                    control_name = "Z_GIS_ij.DMSO",
+                                    condition_name = "Z_GIS_ij.MMS"){
   par(mfrow = c(1, 2))
   
   gi_data_list <- list(gi_data_new, gi_data_old)
@@ -23,7 +23,7 @@ st_onge_comparison_plot <- function(gi_data_old,
   
   
   #Compare AUC
-  gi_scores <- gi_data_new[, grep('^GIS', colnames(gi_data_new))]
+  #gi_scores <- gi_data_new[, grep('^GIS', colnames(gi_data_new))]
   for (condition in c(control_name, condition_name)) {
     for (i in 1:length(gi_data_list)) {
       gi_data <- gi_data_list[[i]]
@@ -31,7 +31,7 @@ st_onge_comparison_plot <- function(gi_data_old,
         dplyr::filter(gi_data,
                       SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))
       
-      gi_scores <- gi_data[, grep('^GIS', colnames(gi_data))]
+      #gi_scores <- grep('^GIS', colnames(gi_data))]
       
       
       if (condition == control_name) {
@@ -78,13 +78,13 @@ st_onge_comparison_plot <- function(gi_data_old,
   }
   
   #Correlate with GI scores
-  for (condition in colnames(gi_scores)[c(2,3)]) {
+  for (condition in c(control_name,condition_name)) {
     for (i in 1:length(gi_data_list)) {
       gi_data <- gi_data_list[[i]]
-      if (condition %in% c("GIS_ij.NoDrug", "GIS_ij.DMSO")) {
+      if (condition == control_name) {
         st_onge_e <- 'SOJ_E_NoMMS'
       }
-      if (condition == "GIS_ij.MMS") {
+      if (condition == condition_name) {
         st_onge_e <- 'SOJ_E_MMS'
       }
       plot(gi_data[, st_onge_e], gi_data[, condition], pch = 16,
@@ -111,7 +111,8 @@ prec_recall_vs_stonge <- function(gi_data,
                                   control_name = "GIS_ij.DMSO",
                                   condition_name = "GIS_ij.MMS",
                                   fdr_prefix = "FDR.Internal_ij",
-                                  fdr_cutoff = 0.05) {
+                                  fdr_cutoff = 0.05,
+                                  xlims = NULL) {
   gene1 <- sapply(gi_data$Barcode_i, function(x) {
     strsplit(x, split = '_')[[1]][1]
   })
@@ -145,10 +146,14 @@ prec_recall_vs_stonge <- function(gi_data,
       gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
     
     
+    ##scores_cond_pos < - scores_cond[scores_cond > 0]
     score_ind_pos <- sort(scores_cond, index.return = T)$ix
     
     scores_cond_pos <- scores_cond[score_ind_pos]
     labels_pos <- labels_pos[score_ind_pos]
+    
+    
+    
     prec_pos <- sapply(1:length(scores_cond_pos), function(i) {
       sum(labels_pos[i:length(labels_pos)]) / (length(labels_pos) - i + 1)
     })
@@ -169,22 +174,24 @@ prec_recall_vs_stonge <- function(gi_data,
     fdr_col <- paste(c(fdr_prefix,drug),collapse='.')
     
     if (condition == control_name) {
-      
+      if(is.null(xlims)){
+        xlims <-c(min(scores_cond_pos), max(scores_cond_pos))
+      }
       
       
       plot(
         scores_cond_pos[scores_cond_pos > 0],
-        prec_pos[scores_cond_pos > 0],
+        prec_pos[scores_cond_pos > 0]*100,
         type = 'l',
-        ylab = 'Precision (1 - FDR)',
+        ylab = 'St.Onge Validation Rate (%)',
         xlab = 'Z Cutoff',
         main = 'GI Precision vs St. Onge',
         #st_onge_class,
         lwd = 2,
-        xlim = c(min(scores_cond_pos), max(scores_cond_pos)))
+        xlim = xlims)
         
         lines(scores_cond_neg[scores_cond_neg < 0],
-              prec_neg[scores_cond_neg < 0],
+              prec_neg[scores_cond_neg < 0]*100,
               lwd = 2)
         
         abline(v=min(scores_cond[scores_cond > 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]))
@@ -193,11 +200,11 @@ prec_recall_vs_stonge <- function(gi_data,
       
     } else{
       lines(scores_cond_pos[scores_cond_pos > 0],
-            prec_pos[scores_cond_pos > 0],
+            prec_pos[scores_cond_pos > 0]*100,
             col = 'red',
             lwd = 2)
       lines(scores_cond_neg[scores_cond_neg < 0],
-            prec_neg[scores_cond_neg < 0],
+            prec_neg[scores_cond_neg < 0]*100,
             col = 'red',
             lwd = 2)
       abline(v=min(scores_cond[scores_cond > 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]),col='red')

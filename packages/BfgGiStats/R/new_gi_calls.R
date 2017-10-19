@@ -1,8 +1,8 @@
 devtools::use_package('dplyr')
 
 add_fdrs <- function(gi_data,
-                            fdr_positive = 0.05,
-                            fdr_negative = 0.05,
+                            fdr_positive = 0.01,
+                            fdr_negative = 0.01,
                            nn_pair_type = 'broad'){
   gi_data_full <- gi_data
   gi_data <-
@@ -40,6 +40,7 @@ add_fdrs <- function(gi_data,
   fdr_matrix <- c()
   
   for(condition in colnames(z_scores)){
+    print(condition)
     nn_scores_cond <-  nn_scores[,condition]
     non_nn_scores_cond <- non_nn_scores[,condition]
     
@@ -58,9 +59,8 @@ add_fdrs <- function(gi_data,
       })
     })
     
-    pos_prec_vec <<- precision_list[[1]]
-    neg_prec_vec <<- precision_list[[2]]
-    
+    pos_prec_vec <- precision_list[[1]]
+    neg_prec_vec <- precision_list[[2]]
     pos_prec_func <- approxfun(non_nn_scores_cond,pos_prec_vec)
     neg_prec_func <- approxfun(non_nn_scores_cond,neg_prec_vec)
     
@@ -68,8 +68,8 @@ add_fdrs <- function(gi_data,
     fdrs_neg <- neg_prec_func(z_scores_full[,condition])
     
     #FDR is never 0
-    fdrs_neg[fdrs_neg == 0] <- min(fdrs_neg[fdrs_neg > 0],na.rm=T)
-    fdrs_pos[fdrs_pos == 0] <- min(fdrs_pos[fdrs_pos > 0],na.rm=T)
+    #fdrs_neg[fdrs_neg == 0] <- min(fdrs_neg[fdrs_neg > 0],na.rm=T)
+    #fdrs_pos[fdrs_pos == 0] <- min(fdrs_pos[fdrs_pos > 0],na.rm=T)
     
     #Extreme values from linked pairs get assigned lowest FDR
     fdrs_neg[z_scores_full[,condition] <= min(non_nn_scores_cond)] <- min(fdrs_neg,na.rm=T)
@@ -128,7 +128,10 @@ update_calls <- function(gi_data,
                          z_score_cols = NULL,
                          z_class_cols = NULL,
                          fdr_cols = NULL,
-                         fdr_cutoff = 0.05){
+                         fdr_cutoff = 0.01,
+                         use_z = F,
+                         z_cutoff_neg = NULL,
+                         z_cutoff_pos = NULL){
   if(is.null(z_score_cols)){
     z_score_cols <-
       grep('Class',
@@ -148,9 +151,14 @@ update_calls <- function(gi_data,
   }
   for(i in 1:length(z_score_cols)){
     gi_data[,z_class_cols[i]] <- "NEUTRAL"
-    neg_crit <- gi_data[,fdr_cols[i]] <= fdr_cutoff & gi_data[,z_score_cols[i]] < 0
-    pos_crit <- gi_data[,fdr_cols[i]] <= fdr_cutoff & gi_data[,z_score_cols[i]] > 0
     
+    if(use_z == F){
+      neg_crit <- gi_data[,fdr_cols[i]] <= fdr_cutoff & gi_data[,z_score_cols[i]] < 0
+      pos_crit <- gi_data[,fdr_cols[i]] <= fdr_cutoff & gi_data[,z_score_cols[i]] > 0
+    }else{
+      neg_crit <- gi_data[,z_score_cols[i]] < z_cutoff_neg
+      pos_crit <- gi_data[,z_score_cols[i]] > z_cutoff_pos
+    }
     gi_data[neg_crit,z_class_cols[i]] <- "AGGRAVATING"
     gi_data[pos_crit,z_class_cols[i]] <- "ALLEVIATING"
   }

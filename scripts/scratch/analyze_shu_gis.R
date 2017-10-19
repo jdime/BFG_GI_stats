@@ -1,16 +1,16 @@
-pos_cut <- 1.2#0.089#0.146
-neg_cut <- -1.1#0.01#-0.079
-library(dplyr)
+pos_cut <- 6#0.089#0.146
+neg_cut <- -5#0.01#-0.079
+#library(dplyr)
 
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
-setwd('../data')
+#this.dir <- dirname(parent.frame(2)$ofile)
+#setwd(this.dir)
+#setwd('../data')
 
 
+#gi_data <-
+#  read.table('table_s1_new.tsv', head = T, stringsAsFactors = F)
 gi_data <-
-  read.table('table_s1_new.tsv', head = T, stringsAsFactors = F)
-gi_data <-
-  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'no', C_ij.HetDipl > 100)
+  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'no')#, C_ij.HetDipl > 100)
 
 shu_complex <- c('CSM2','PSY3','SHU2','SHU1')
 
@@ -38,21 +38,21 @@ gi_data$Pair <- sapply(1:length(gi_data$gene1),function(i){
 #stop()
 
 shu_data <- filter(gi_data, gene1 %in% shu_complex & gene2 %in% shu_complex)
-shu_data <- shu_data %>% group_by(Pair) %>% dplyr::select(grep('^GIS', colnames(shu_data))) %>% summarize_each(funs(mean))
-positive_conditions_shu <- apply(shu_data[,grep('^GIS', colnames(shu_data))],1,function(x){names(which(x > pos_cut))})
+shu_data <- shu_data %>% group_by(Pair) %>% dplyr::select(grep('^Z_GIS', colnames(shu_data))) %>% summarize_each(funs(mean))
+positive_conditions_shu <- apply(shu_data[,grep('^Z_GIS', colnames(shu_data))],1,function(x){names(which(x > pos_cut))})
 names(positive_conditions_shu) <- shu_data$Pair
 
 mag1_data <-
-  filter(
+  dplyr::filter(
     gi_data,
     gene1 %in% c(shu_complex, 'SLX4') &
       gene2 == 'MAG1' |
       gene2 %in% c(shu_complex, 'SLX4') & gene1 == 'MAG1'
   )
 mag1_data <-
-  mag1_data %>% group_by(Pair) %>% dplyr::select(grep('^GIS', colnames(gi_data))) %>% summarize_each(funs(mean))
+  mag1_data %>% dplyr::group_by(Pair) %>% dplyr::select(grep('^Z_GIS', colnames(gi_data))) %>% summarize_each(funs(mean))
 negative_conditions_mag1 <-
-  apply(mag1_data[, grep('^GIS', colnames(mag1_data))], 1, function(x) {
+  apply(mag1_data[, grep('^Z_GIS', colnames(mag1_data))], 1, function(x) {
     names(which(x < neg_cut))
   })
 names(negative_conditions_mag1) <- mag1_data$Pair
@@ -65,9 +65,9 @@ slx4_data <-
       gene2 %in% c(shu_complex, 'MAG1') & gene1 == 'SLX4'
   )
 slx4_data <-
-  slx4_data %>% group_by(Pair) %>% dplyr::select(grep('^GIS', colnames(gi_data))) %>% summarize_each(funs(mean))
+  slx4_data %>% group_by(Pair) %>% dplyr::select(grep('^Z_GIS', colnames(gi_data))) %>% summarize_each(funs(mean))
 negative_conditions_slx4 <-
-  apply(slx4_data[, grep('^GIS', colnames(slx4_data))], 1, function(x) {
+  apply(slx4_data[, grep('^Z_GIS', colnames(slx4_data))], 1, function(x) {
     names(which(x < neg_cut))
   })
 names(negative_conditions_slx4) <- slx4_data$Pair

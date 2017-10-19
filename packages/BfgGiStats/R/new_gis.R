@@ -22,81 +22,25 @@ update_gis <- function(gi_data,
     gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
   
   
-  count_data <- gi_data[, grep('^C_', colnames(gi_data))] + 1
+  count_data <- gi_data[, grep('^C_', colnames(gi_data))]
   condition_sums <- apply(count_data, 2, sum)
   freq_data <- count_data / condition_sums
   
   
-  f_ij_data <- count_data / condition_sums
-  r_ij_data <- (f_ij_data / f_ij_data[, 1])[, 2:ncol(f_ij_data)]
-  
+  f_xy_data <- count_data / condition_sums
+  r_xy_data <- (f_xy_data / f_xy_data[, 1])[, 2:ncol(f_xy_data)]
+  g_xy_data <- t(t(log2(r_xy_data)) + g_wt_vec)
+  g_xy_wt <- apply(g_xy_data[nn_pairs,],2,median)
+  w_xy_data <- t(t(g_xy_data) / g_xy_wt)
   
   genes <- unique(unlist(gi_data[, 1:2]))
-  
-  neutral_genes <-
-    unique(unlist(
-      dplyr::filter(
-        gi_data,
-        Type_of_gene_i == 'Neutral' & Type_of_gene_j == 'Neutral'
-      )[, 1:2]
-    ))
-  
-  ddr_genes <-
-    unique(unlist(
-      dplyr::filter(
-        gi_data,
-        Type_of_gene_i != 'Neutral' & Type_of_gene_j != 'Neutral'
-      )[, 1:2]
-    ))
-  
-  
-  r_ij_median_single_genes <- t(sapply(genes, function(gene) {
-    criteria <-
-      gi_data[, 1] == gene &
-      gi_data$Type_of_gene_j == 'Neutral' |
-      gi_data[, 2] == gene & gi_data$Type_of_gene_i == 'Neutral'
-    criteria <-
-      criteria &
-      gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
-    criteria <-
-      criteria &
-      gi_data$C_ij.HetDipl >= well_measured_cutoff
-    #wt_norm_freq_data[which(gi_data[,1]) == 1]
-    return(apply(r_ij_data[criteria, ], 2, median))
-  }))
-  
-  
-  
-  r_ij_wt <-
-    apply(r_ij_median_single_genes[neutral_genes,], 2, median)
-  
-  rel_g_ij <- log2(t(t(r_ij_data) / r_ij_wt))
-  
-  #g_wt <- -apply(rel_g_ij,2,function(x){
-  #  
-  #  x <- x[!(same_same) & gi_data$C_ij.HetDipl >= well_measured_cutoff]
-  #  min(x[is.finite(x)])
-  #  
-  #})
-  
-  if(is.null(g_wt_vec)){
-  g_wt <-
-     apply(-(rel_g_ij[same_same &
-                        gi_data$C_ij.HetDipl >= well_measured_cutoff, ]), 2, median)
-  }else{
-    g_wt <- g_wt_vec
-  }
-  g_ij <- t(t(rel_g_ij) + g_wt)
-  
-  g_ij[!is.finite(g_ij)] <- 0
-  
-  w_ij_data <- t(t(g_ij) / g_wt)
-  
-  
+
+  #Quick fix
+  w_xy_data[w_xy_data < 0] <- 0
   
   #Using mean here instead of median because
   #otherwise standard deviation doesn't make sense
-  w_ij_single_genes <- t(sapply(genes, function(gene) {
+  w_xy_single_genes <- t(sapply(genes, function(gene) {
     criteria <-
       gi_data[, 1] == gene &
       gi_data$Type_of_gene_j == 'Neutral' |
@@ -108,10 +52,10 @@ update_gis <- function(gi_data,
       criteria &
       gi_data$C_ij.HetDipl >= well_measured_cutoff
     
-    return(apply(w_ij_data[criteria, ], 2, mean))
+    return(apply(w_xy_data[criteria, ], 2, mean))
   }))
   
-  w_ij_error_single_genes <- t(sapply(genes, function(gene) {
+  w_xy_error_single_genes <- t(sapply(genes, function(gene) {
     criteria <-
       gi_data[, 1] == gene &
       gi_data$Type_of_gene_j == 'Neutral' |
@@ -122,39 +66,53 @@ update_gis <- function(gi_data,
     criteria <-
       criteria &
       gi_data$C_ij.HetDipl >= well_measured_cutoff
-      return(apply(w_ij_data[criteria, ], 2, sd))
+      return(apply(w_xy_data[criteria, ], 2, function(x){sd(x)/sqrt(length(x))}))
   }))
   
   #Quick fix
-  w_ij_data[w_ij_data < 0] <- 0
+  
   
   bc1 <- gi_data$Barcode_i
   bc2 <- gi_data$Barcode_j
   
-  gis <- t(sapply(1:nrow(w_ij_data), function(i) {
-    w_i <- w_ij_single_genes[bc1[i], ]
-    w_j <- w_ij_single_genes[bc2[i], ]
+  gis <- t(sapply(1:nrow(w_xy_data), function(i) {
+    w_x <- w_xy_single_genes[bc1[i], ]
+    w_y <- w_xy_single_genes[bc2[i], ]
     
-    w_ij <- w_ij_data[i, ]
+    w_xy <- w_xy_data[i, ]
     
-    gis <- (w_ij) - (w_i * w_j)
+    gis <- (w_xy) - (w_x * w_y)
+    
+    #gis <- log2((w_xy + 0.01)/((w_x * w_y) + 0.01))
+    
+    if(sum(is.na(gis) > 0)){
+      print(w_xy)
+      print(w_x)
+      print(w_y)
+      #print(c(w_xy,w_x,w_y))
+    }
+    
     return(gis)
   }))
   
-  gi_uncertainty <- t(sapply(1:nrow(w_ij_data), function(i) {
-    w_i <- w_ij_single_genes[bc1[i], ]
-    w_j <- w_ij_single_genes[bc2[i], ]
+  gi_uncertainty <- t(sapply(1:nrow(w_xy_data), function(i) {
+    w_x <- w_xy_single_genes[bc1[i], ]
+    w_y <- w_xy_single_genes[bc2[i], ]
     
     
-    w_i_error <- w_ij_error_single_genes[bc1[i], ]
-    w_j_error <- w_ij_error_single_genes[bc2[i], ]
+    w_x_error <- w_xy_error_single_genes[bc1[i], ]
+    w_y_error <- w_xy_error_single_genes[bc2[i], ]
     
-    w_ij <- w_ij_data[i, ]
+    w_xy <- w_xy_data[i, ]
     
     
     #Delta rule
     prod_uncertainty <-
-      abs(w_i * w_j) * sqrt((w_i_error / w_i) ^ 2 + (w_j_error / w_j) ^ 2)
+      abs(w_x * w_y) * sqrt((w_x_error / w_x) ^ 2 + (w_y_error / w_y) ^ 2)
+    
+    #gis <- ((w_xy + 0.01)/((w_x * w_y) + 0.01))
+    
+    #prod_uncertainty <- (prod_uncertainty)/log(2)
     
     return(prod_uncertainty)
   }))
