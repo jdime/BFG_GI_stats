@@ -1,8 +1,8 @@
 devtools::use_package('dplyr')
 
+
+#Adds FDR columns to the genetic interaction data
 add_fdrs <- function(gi_data,
-                            fdr_positive = 0.01,
-                            fdr_negative = 0.01,
                            nn_pair_type = 'broad'){
   gi_data_full <- gi_data
   gi_data <-
@@ -36,48 +36,47 @@ add_fdrs <- function(gi_data,
   nn_scores <- z_scores[nn_pairs,]
   non_nn_scores <- z_scores[ddr_pairs,]
   
-  #ret_table <- c()
+  
   fdr_matrix <- c()
   
   for(condition in colnames(z_scores)){
     print(condition)
     nn_scores_cond <-  nn_scores[,condition]
     non_nn_scores_cond <- non_nn_scores[,condition]
+    non_nn_scores_cond_full <- z_scores_full[,condition]
     
+    
+    #Hacky way to make FDRs for both positive and negative
+    #in a loop
     unequal_tests <- c(`>=`,`<=`)
     
     precision_list <- lapply(unequal_tests,function(unequal_test){
-      sapply(1:length(non_nn_scores_cond),function(i){
-        observed <- sum(unequal_test(non_nn_scores_cond, non_nn_scores_cond[i]))
-        expected <- sum(unequal_test(nn_scores_cond, non_nn_scores_cond[i]))
+      mu <- mean(nn_scores_cond)
+      sigma <- sd(nn_scores_cond)
+      sapply(1:length(non_nn_scores_cond_full),function(i){
+        observed <- sum(unequal_test(non_nn_scores_cond_full, non_nn_scores_cond_full[i]))
+        if(all.equal(unequal_test,`<=`) == T){
+          use_lower_tail <- T
+        }else{
+          use_lower_tail <- F
+        }
         
-        expected <- expected/length(nn_scores_cond)
-        expected <- expected*length(non_nn_scores_cond)
+        #Using normal distribuion to calculate expected
+        expected <- pnorm(non_nn_scores_cond_full[i],mean=mu,sd=sigma,lower.tail=use_lower_tail)
+        expected <- expected*length(non_nn_scores_cond_full)
         fdr <- (expected/observed)
-        fdr <- min(fdr,1)
-        return(fdr)
+        
+        #No sense returing fdr estimates >100%
+        return(min(fdr,1))
       })
     })
     
-    pos_prec_vec <- precision_list[[1]]
-    neg_prec_vec <- precision_list[[2]]
-    pos_prec_func <- approxfun(non_nn_scores_cond,pos_prec_vec)
-    neg_prec_func <- approxfun(non_nn_scores_cond,neg_prec_vec)
+    fdrs_pos <- precision_list[[1]]
+    fdrs_neg <- precision_list[[2]]
+      comb_fdr <- cbind(fdrs_pos,fdrs_neg)
     
-    fdrs_pos <- pos_prec_func(z_scores_full[,condition])
-    fdrs_neg <- neg_prec_func(z_scores_full[,condition])
-    
-    #FDR is never 0
-    #fdrs_neg[fdrs_neg == 0] <- min(fdrs_neg[fdrs_neg > 0],na.rm=T)
-    #fdrs_pos[fdrs_pos == 0] <- min(fdrs_pos[fdrs_pos > 0],na.rm=T)
-    
-    #Extreme values from linked pairs get assigned lowest FDR
-    fdrs_neg[z_scores_full[,condition] <= min(non_nn_scores_cond)] <- min(fdrs_neg,na.rm=T)
-    fdrs_pos[z_scores_full[,condition] >= max(non_nn_scores_cond)] <- min(fdrs_pos,na.rm=T)
-  
-    #fdr_scores <- fdrs_neg
-    comb_fdr <- cbind(fdrs_pos,fdrs_neg)
-    
+    #Return positive or negative FDRs based on the nominal sign
+    #of the interaction
     fdr_scores <- sapply(1:nrow(comb_fdr),function(i){
       if(z_scores_full[i,condition] < 0){
         return(fdrs_neg[i])
@@ -88,28 +87,12 @@ add_fdrs <- function(gi_data,
     
 
     fdr_matrix <- cbind(fdr_matrix,fdr_scores)
-    
-    
-    
-    #fdr_cutoff_neg <- max(non_nn_scores_cond[neg_prec_vec < fdr_negative])
-    #fdr_cutoff_pos <- min(non_nn_scores_cond[pos_prec_vec < fdr_positive])
-    
-    #positive_inters <- sum(non_nn_scores_cond > fdr_cutoff_pos)
-    #negative_inters <- sum(non_nn_scores_cond < fdr_cutoff_neg)
-    
-    #ret_table <- cbind(ret_table,c(fdr_cutoff_pos,fdr_cutoff_neg,positive_inters,negative_inters))
   }
-  #rownames(ret_table) <- c('Z cutoff Positive',
-  #                         'Z cutoff Negative',
-  #                         'Positive Interactions at Cutoff',
-  #                         'Negative Interactions at Cutoff')
-  #ret_table <- as.data.frame(ret_table)
+  
+  #Add the appropriate columns at the end and fill in the data
   drugs <- sapply(colnames(z_scores),function(name){
     strsplit(name,split='\\.')[[1]][2]
   })
-  
-  #colnames(ret_table) <- drugs
-  
   fdr_names <- sapply(drugs,function(drug){
     paste(c('FDR.Internal_ij.',drug),collapse='')
   })
@@ -119,7 +102,6 @@ add_fdrs <- function(gi_data,
   gi_data_full[,fdr_names] <- fdr_matrix
   
   return(gi_data_full)
-  #return(ret_table)
   
 }
 
@@ -128,7 +110,7 @@ update_calls <- function(gi_data,
                          z_score_cols = NULL,
                          z_class_cols = NULL,
                          fdr_cols = NULL,
-                         fdr_cutoff = 0.01,
+                         fdr_cutoff = 0.05,
                          use_z = F,
                          z_cutoff_neg = NULL,
                          z_cutoff_pos = NULL){

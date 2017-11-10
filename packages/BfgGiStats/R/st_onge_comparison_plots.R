@@ -1,6 +1,8 @@
 devtools::use_package('ROCR')
 devtools::use_package('dplyr')
 
+
+#Used for calculating AUC
 rhombus_integration <- function(x, y) {
   sum <- 0
   for (i in 2:length(x)) {
@@ -11,12 +13,88 @@ rhombus_integration <- function(x, y) {
   return(sum)
 }
 
+#Makes a precision 
+precision_vs_stonge <- function(gi_data,
+                                  control_name = "NoDrug",
+                                  condition_name = "MMS",
+                                  fdr_prefix = "FDR.Internal_ij",
+                                  z_prefix = "Z_GIS_ij",
+                                  fdr_cutoff = 0.05,
+                                  xlims = c(-5,5),
+                                  xlab = '-Log10 (Internal FDR)*sign(Z)') {
+  
+  for (condition in c(control_name, condition_name)) {
+    if (condition == control_name) {
+      st_onge_class <- 'SOJ_Class_NoMMS'
+    }
+    if (condition == condition_name) {
+      st_onge_class <- 'SOJ_Class_MMS'
+    }
+    
+    gi_data_filtered <-
+      dplyr::filter(gi_data,
+                    SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))
+    
+    
+    
+    fdr_column <- paste(c(fdr_prefix,condition),collapse='.')
+    z_column <- paste(c(z_prefix,condition),collapse='.')
+    
+    labels_pos <-
+      gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
+    labels_neg <-
+      gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
+    
+    scores_cond <- sign(gi_data_filtered[,z_column])*-log10(gi_data_filtered[,fdr_column])
+    
+    pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), 'prec')
+    neg_perf <- ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), 'prec')
+    
+    pos_cutoff <- pos_perf@x.values[[1]]
+    pos_precision <- pos_perf@y.values[[1]]
+    
+    neg_cutoff <- neg_perf@x.values[[1]]
+    neg_precision <- neg_perf@y.values[[1]]
+    
+    if (condition == control_name) {
+      if (is.null(xlims)) {
+        xlims <-
+          c(-1*neg_perf@x.values[[1]][2], pos_perf@x.values[[1]][2])
+      }
+      par(mar=c(4.5,5,3,1))
+      plot(
+        pos_cutoff[pos_cutoff > 0],
+        (pos_precision*100)[pos_cutoff > 0],
+        type = 'l',
+        ylab = 'St.Onge Validation Rate (%)',
+        xlab = xlab,
+        main = 'GI Precision vs St. Onge',
+        lwd = 1,
+        xlim = xlims,
+        ylim=c(0,100))
+      lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1)
+    } else{
+      lines(pos_cutoff[pos_cutoff > 0],(pos_precision*100)[pos_cutoff > 0],lwd=1,col='red')
+      lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1,col='red')
+    }
+  }
+  
+  abline(v=-log10(fdr_cutoff), lty = 3, lwd = 0.7)
+  abline(v=log10(fdr_cutoff), lty = 3, lwd = 0.7)
+  
+  legend(xlims[1],50,legend=c(control_name, condition_name),fill=c('black','red'))
+}
+
+
+
+
+
 
 st_onge_comparison_plot <- function(gi_data_old,
                                     gi_data_new,
-                                    control_name = "Z_GIS_ij.DMSO",
-                                    condition_name = "Z_GIS_ij.MMS"){
-  par(mfrow = c(1, 2))
+                                    control_name = "GIS_ij.DMSO",
+                                    condition_name = "GIS_ij.MMS"){
+  #par(mfrow = c(1, 2))
   
   gi_data_list <- list(gi_data_new, gi_data_old)
   names(gi_data_list) <- c('new', 'old')
@@ -106,111 +184,77 @@ st_onge_comparison_plot <- function(gi_data_old,
 }
 
 
-prec_recall_vs_stonge <- function(gi_data,
-                                  score_cols = NULL,
-                                  control_name = "GIS_ij.DMSO",
-                                  condition_name = "GIS_ij.MMS",
-                                  fdr_prefix = "FDR.Internal_ij",
-                                  fdr_cutoff = 0.05,
-                                  xlims = NULL) {
-  gene1 <- sapply(gi_data$Barcode_i, function(x) {
-    strsplit(x, split = '_')[[1]][1]
-  })
-  
-  gene2 <- sapply(gi_data$Barcode_j, function(x) {
-    strsplit(x, split = '_')[[1]][1]
-  })
-  
-  if (is.null(score_cols)) {
-    score_cols <- grep('^GIS', colnames(gi_data))
-  }
-  scores <- gi_data[, score_cols]
-  for (condition in c(control_name, condition_name)) {
-    if (condition == control_name) {
-      st_onge_class <- 'SOJ_Class_NoMMS'
-    }
-    if (condition == condition_name) {
-      st_onge_class <- 'SOJ_Class_MMS'
-    }
-    
-    gi_data_filtered <-
-      dplyr::filter(gi_data,
-                    SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))
-    
-    
-    
-    scores_cond <- gi_data_filtered[, condition]
-    labels_pos <-
-      gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
-    labels_neg <-
-      gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
-    
-    
-    ##scores_cond_pos < - scores_cond[scores_cond > 0]
-    score_ind_pos <- sort(scores_cond, index.return = T)$ix
-    
-    scores_cond_pos <- scores_cond[score_ind_pos]
-    labels_pos <- labels_pos[score_ind_pos]
-    
-    
-    
-    prec_pos <- sapply(1:length(scores_cond_pos), function(i) {
-      sum(labels_pos[i:length(labels_pos)]) / (length(labels_pos) - i + 1)
-    })
-    fdr_pos <- 1 - prec_pos
-    
-    
-    
-    score_ind_neg <- sort(scores_cond, index.return = T, decreasing = T)$ix
-    
-    scores_cond_neg <- scores_cond[score_ind_neg]
-    labels_neg <- labels_neg[score_ind_neg]
-     prec_neg <- sapply(1:length(scores_cond), function(i) {
-      sum(labels_neg[i:length(labels_neg)]) / (length(labels_neg) - i + 1)
-    })
-    fdr_neg <- 1 - prec_neg
-    
-    drug <- strsplit(condition,split='\\.')[[1]][2]
-    fdr_col <- paste(c(fdr_prefix,drug),collapse='.')
-    
-    if (condition == control_name) {
-      if(is.null(xlims)){
-        xlims <-c(min(scores_cond_pos), max(scores_cond_pos))
-      }
-      
-      
-      plot(
-        scores_cond_pos[scores_cond_pos > 0],
-        prec_pos[scores_cond_pos > 0]*100,
-        type = 'l',
-        ylab = 'St.Onge Validation Rate (%)',
-        xlab = 'Z Cutoff',
-        main = 'GI Precision vs St. Onge',
-        #st_onge_class,
-        lwd = 2,
-        xlim = xlims)
-        
-        lines(scores_cond_neg[scores_cond_neg < 0],
-              prec_neg[scores_cond_neg < 0]*100,
-              lwd = 2)
-        
-        abline(v=min(scores_cond[scores_cond > 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]))
-        abline(v=max(scores_cond[scores_cond < 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]))
-        #abline(min(v=))
-      
-    } else{
-      lines(scores_cond_pos[scores_cond_pos > 0],
-            prec_pos[scores_cond_pos > 0]*100,
-            col = 'red',
-            lwd = 2)
-      lines(scores_cond_neg[scores_cond_neg < 0],
-            prec_neg[scores_cond_neg < 0]*100,
-            col = 'red',
-            lwd = 2)
-      abline(v=min(scores_cond[scores_cond > 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]),col='red')
-      abline(v=max(scores_cond[scores_cond < 0 & gi_data_filtered[,fdr_col] <= fdr_cutoff]),col='red')
-      
-    }
-  }
-}
-  
+
+
+
+
+# 
+# mcc_vs_stonge <- function(gi_data,
+#                           score_cols = NULL,
+#                           control_name = "GIS_ij.DMSO",
+#                           condition_name = "GIS_ij.MMS",
+#                           fdr_prefix = "FDR.Internal_ij",
+#                           fdr_cutoff = 0.01,
+#                           xlims = NULL) {
+#   gene1 <- sapply(gi_data$Barcode_i, function(x) {
+#     strsplit(x, split = '_')[[1]][1]
+#   })
+#   
+#   gene2 <- sapply(gi_data$Barcode_j, function(x) {
+#     strsplit(x, split = '_')[[1]][1]
+#   })
+#   
+#   if (is.null(score_cols)) {
+#     score_cols <- grep('^GIS', colnames(gi_data))
+#   }
+#   scores <- gi_data[, score_cols]
+#   for (condition in c(control_name, condition_name)) {
+#     if (condition == control_name) {
+#       st_onge_class <- 'SOJ_Class_NoMMS'
+#     }
+#     if (condition == condition_name) {
+#       st_onge_class <- 'SOJ_Class_MMS'
+#     }
+#     
+#     gi_data_filtered <-
+#       dplyr::filter(gi_data,
+#                     SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))
+#     
+#     scores_cond <- gi_data_filtered[, condition]
+#     labels_pos <-
+#       gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
+#     labels_neg <-
+#       gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
+#     
+#     pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), 'mat')
+#     neg_perf <- ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), 'mat')
+#     
+#     pos_cutoff <- pos_perf@x.values[[1]]
+#     pos_precision <- pos_perf@y.values[[1]]
+#     
+#     neg_cutoff <- neg_perf@x.values[[1]]
+#     neg_precision <- neg_perf@y.values[[1]]
+#     
+#     if (condition == control_name) {
+#       if (is.null(xlims)) {
+#         xlims <-
+#           c(-1 * max(neg_perf@x.values[[1]]), max())
+#       }
+#       plot(
+#         pos_cutoff[pos_cutoff > 0],
+#         (pos_precision*100)[pos_cutoff > 0],
+#         type = 'l',
+#         ylab = 'MCC * 100',
+#         xlab = 'Z Cutoff',
+#         main = 'MCC vs St. Onge',
+#         lwd = 2,
+#         xlim = xlims,
+#         ylim=c(0,100))
+#       lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1)
+#     } else{
+#       lines(pos_cutoff[pos_cutoff > 0],(pos_precision*100)[pos_cutoff > 0],lwd=1,col='red')
+#       lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1,col='red')
+#     }
+#   }
+#   
+# }
