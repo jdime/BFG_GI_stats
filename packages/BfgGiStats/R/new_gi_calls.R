@@ -40,7 +40,6 @@ add_fdrs <- function(gi_data,
   fdr_matrix <- c()
   
   for(condition in colnames(z_scores)){
-    print(condition)
     nn_scores_cond <-  nn_scores[,condition]
     non_nn_scores_cond <- non_nn_scores[,condition]
     non_nn_scores_cond_full <- z_scores_full[,condition]

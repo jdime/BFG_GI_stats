@@ -3,7 +3,8 @@ devtools::use_package('dplyr')
 
 
 #Used for calculating AUC
-rhombus_integration <- function(x, y) {
+#' Trapezoid method for integration
+trapezoid_integration <- function(x, y) {
   sum <- 0
   for (i in 2:length(x)) {
     base <- x[i] - x[i - 1]
@@ -13,7 +14,16 @@ rhombus_integration <- function(x, y) {
   return(sum)
 }
 
-#Makes a precision 
+#' Plots St. Onge et al validation as a function of the internal FDR estimates
+#'
+#' @param gi_data input genetic interaction table
+#' @param control_name condition which corresponds to 'NoMMS' in the St onge data
+#' @param condition_name condition which corresponds to 'MMS' in the St onge data
+#' @param fdr_prefix pasted with control_name and condition_name to find the FDR columns
+#' @param z_prefix pasted with control_name and condition_name to find the Z columns
+#' @param fdr_cutoff used to draw 'cutoff' lines in the plot
+#' @param xlims plot x axis limits
+#' @param xlab plot x axis label
 precision_vs_stonge <- function(gi_data,
                                   control_name = "NoDrug",
                                   condition_name = "MMS",
@@ -62,6 +72,7 @@ precision_vs_stonge <- function(gi_data,
           c(-1*neg_perf@x.values[[1]][2], pos_perf@x.values[[1]][2])
       }
       par(mar=c(4.5,5,3,1))
+      par(las=1)
       plot(
         pos_cutoff[pos_cutoff > 0],
         (pos_precision*100)[pos_cutoff > 0],
@@ -87,9 +98,141 @@ precision_vs_stonge <- function(gi_data,
 
 
 
+st_onge_auc_plot <- function(gi_data,
+                             control_name = "NoDrug",
+                             condition_name = "MMS",
+                             fdr_prefix = "FDR.Internal_ij",
+                             z_prefix = "Z_GIS_ij",
+                             old_data = F,
+                             gi_prefix = "GIS_ij",
+                             neg_col = rgb(230/255,155/255,34/255),
+                             pos_col = rgb(90/255,179/255,228/255),
+                             lwd = 3){
+  
+  for (condition in c(control_name, condition_name)) {
+    
+    gi_data_filtered <-
+      dplyr::filter(gi_data,
+                    SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))
+    
+    if (condition == control_name) {
+      st_onge_class <- 'SOJ_Class_NoMMS'
+    }
+    if (condition == condition_name) {
+      st_onge_class <- 'SOJ_Class_MMS'
+    }
+    
+    #labels_pos <- gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
+    #labels_neg <- gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
+    #z_scores_cond_pos <-
+    #  gi_data_filtered[, condition]#, collapse = '')]
+    #z_scores_cond_neg <- -z_scores_cond_pos
+    
+    fdr_column <- paste(c(fdr_prefix,condition),collapse='.')
+    z_column <- paste(c(z_prefix,condition),collapse='.')
+    gi_column <- paste(c(gi_prefix,condition),collapse='.')
+    
+    labels_pos <-
+      gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
+    labels_neg <-
+      gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
+    
+    if(old_data == F){
+      scores_cond <- sign(gi_data_filtered[,z_column])*-log10(gi_data_filtered[,fdr_column])
+    }else if(old_data == T){
+      scores_cond <- gi_data_filtered[,gi_column]
+    }
+    
+    perf_pos <-
+      ROCR::performance(ROCR::prediction(scores_cond, labels_pos), 'sens', 'fpr')
+    perf_neg <-
+      ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), 'sens', 'fpr')
+    
+    par(las = 1)
+    plot(
+      perf_pos@x.values[[1]]*100,
+      perf_pos@y.values[[1]]*100,
+      lwd = lwd,
+      col = pos_col,
+      main = condition,#paste(names(gi_data_list)[i],condition)
+      xlab = 'False Positive Rate (%)',
+      ylab = 'Sensitivity (%)',
+      type = 'l'
+    )
+    lines(c(0,100),
+          c(0,100),
+          col='grey80',
+          lty = 5,
+          lwd = lwd/2)
+    lines(perf_neg@x.values[[1]]*100,
+          perf_neg@y.values[[1]]*100,
+          lwd = lwd,
+          col = neg_col)
+
+    
+    #abline(c(0,1),
+    #       col='grey80',
+    #       lty=5,
+    #       lwd = lwd)
+    
+    auc_neg <-
+      trapezoid_integration(perf_neg@x.values[[1]], perf_neg@y.values[[1]])
+    auc_pos <-
+      trapezoid_integration(perf_pos@x.values[[1]], perf_pos@y.values[[1]])
+    
+    text(70, 30, sprintf('AUC neg = %s', format(auc_neg, digits = 2)), col =
+           neg_col)
+    text(70, 10, sprintf('AUC pos = %s', format(auc_pos, digits = 2)), col =
+           pos_col)
+  }
+}
 
 
 
+st_onge_scatterplot <- function(gi_data,
+                                control_name = "NoDrug",
+                                condition_name = "MMS",
+                                gi_prefix = "GIS_ij"){
+  for (condition in c(control_name, condition_name)) {
+    if (condition == control_name) {
+      st_onge_e <- 'SOJ_E_NoMMS'
+      condtext <- 'no drug'
+    }
+    if (condition == condition_name) {
+      st_onge_e <- 'SOJ_E_MMS'
+      condtext <- 'MMS'
+    }
+    gi_column <- paste(c(gi_prefix,condition),collapse='.')
+    
+    par(las=1)
+    par(mar=c(4,5,1,1))
+    plot(gi_data[, st_onge_e],
+         gi_data[, gi_column],
+         pch = 16,
+         main= '',
+         cex = 0.8,
+         col = rgb(0,0,0,0.3),
+         xlab = '',
+         ylab = '')#sprintf('Epsilon (St Onge et al); %s',condtext),ylab = '')
+    par(las=3)
+    mtext(sprintf("Genetic Interaction Score\n(this study); %s",condtext),2,line=3)
+    par(las=1)
+    mtext(sprintf('Epsilon (St Onge et al); %s',condtext),1,line=2.5)
+    #c('Genetic Interaction Score','(this study)'))
+    cor_text <- sprintf('R=%s',format(cor(gi_data[, st_onge_e],
+                   gi_data[, gi_column], use='pair'),digits=2))
+    
+    text(min(gi_data[, st_onge_e], na.rm = T),
+         max(gi_data[, gi_column], na.rm = T),
+         cor_text,
+         adj=c(0,1))
+  }
+}
+
+
+
+#Not used to generate final figure, compares old and new GI data
+#on tpr-fpr AUC and scatterplot correlation wih St. Onge data
 st_onge_comparison_plot <- function(gi_data_old,
                                     gi_data_new,
                                     control_name = "GIS_ij.DMSO",
@@ -143,9 +286,9 @@ st_onge_comparison_plot <- function(gi_data_old,
             col = 'red')
       
       auc_neg <-
-        rhombus_integration(perf_neg@x.values[[1]], perf_neg@y.values[[1]])
+        trapezoid_integration(perf_neg@x.values[[1]], perf_neg@y.values[[1]])
       auc_pos <-
-        rhombus_integration(perf_pos@x.values[[1]], perf_pos@y.values[[1]])
+        trapezoid_integration(perf_pos@x.values[[1]], perf_pos@y.values[[1]])
       
       text(0.8, 0.6, sprintf('AUC neg = %s', format(auc_neg, digits = 2)), col =
              'red')

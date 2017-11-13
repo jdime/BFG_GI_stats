@@ -22,7 +22,7 @@ setwd('../data')
 #Read in genetic interaction data from two tables, using sum column from second table
 gi_data <-
   read.table('table_s1.tsv', head = T, stringsAsFactors = F)
-
+#Remove count data from first table
 gi_data <- gi_data[,-grep('^C_',colnames(gi_data))]
 
 #Can change this to look at only one of the two technical replicates, analyzes the sum by default
@@ -43,7 +43,19 @@ gi_data_old <- gi_data
 
 
 #Change genetic interactions and significance calls
-gi_data <- update_gis(gi_data,g_wt_vec = c(12.62,8.34,8.44,7.04,7.7,7.84,7.5,7.76,6.94,6.28))
+gi_data <- update_gis(gi_data,
+                      #These values are empirically determined and have to be
+                      #in the same order as in gi_data count columns
+                      g_wt_vec = c(12.62,
+                                   8.34,
+                                   8.44,
+                                   7.04,
+                                   7.7,
+                                   7.84,
+                                   7.5,
+                                   7.76,
+                                   6.94,
+                                   6.28))
 
 #Add FDR columns
 gi_data <- add_fdrs(gi_data)
@@ -51,11 +63,26 @@ gi_data <- add_fdrs(gi_data)
 #Update calls based on FDR columns
 gi_data <- update_calls(gi_data,use_z = F,fdr_cutoff = 0.05)
 
-##Making a few plots
+##Making several plots
 setwd(this.dir)
 setwd('../results')
 Cairo::CairoPDF(file='gi_fdr_prec_vs_st_onge.pdf',width=4.5,height=4)
 precision_vs_stonge(gi_data)
+dev.off()
+
+Cairo::CairoPDF(file='auc_vs_st_onge_new.pdf',width=7.5,height=4)
+par(mfrow=c(1,2))
+st_onge_auc_plot(gi_data)
+dev.off()
+
+Cairo::CairoPDF(file='auc_vs_st_onge_old.pdf',width=7.5,height=4)
+par(mfrow=c(1,2))
+st_onge_auc_plot(gi_data_old,old_data=T)
+dev.off()
+
+Cairo::CairoPDF(file='st_onge_scatterplot.pdf',width=7.5,height=3.5)
+par(mfrow=c(1,2))
+st_onge_scatterplot(gi_data)
 dev.off()
 
 #Update the table

@@ -1,6 +1,6 @@
 # Genetic interaction definitions for BFG-GI
 
-Statistical analysis of genetic interactions mapped using Barcode Fusion Genetics
+Updated statistical analysis of genetic interactions mapped using Barcode Fusion Genetics
 
 ## Getting Started
 
