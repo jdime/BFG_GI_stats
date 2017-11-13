@@ -26,6 +26,12 @@ or
 gi_data <- cbind(gi_data,gi_data_2[,grep('^C_ij.*R2',colnames(gi_data_2))])
 ```
 
+## Folder Contents
+**scripts/** - contains the main script (master.R), as well as prototypes in the scratch folder
+**data/** - contains the input data, as well as the modified input data (as table_s1_new.tsv)
+**doc/** - contains an explanation of the new genetic interaction definitions and the significance calling algorithm
+**packages/** - contains all scripts that master.R depends on in the BfgGiStats subfolder, in an R package format
+**results/** - all resulting plots from master.R
 
 ## Authors
 
