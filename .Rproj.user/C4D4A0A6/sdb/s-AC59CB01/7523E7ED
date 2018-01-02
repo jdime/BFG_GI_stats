@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "\n\n\nlibrary(ROCR)\ngi_data_filtered <-\n  dplyr::filter(gi_data,\n                SOJ_Class_NoMMS %in% c('NEUTRAL', 'AGGRAVATING', 'ALLEVIATING'))\n\n\n\nscores_cond <- gi_data_filtered[, \"FDR.Internal_ij.NoDrug\"]\nz_cond <- gi_data_filtered[,\"Z_GIS_ij.NoDrug\" ]\n\n#scores_cond <- scores_cond * sign(z_cond)\n\nlabels_pos <-\n  gi_data_filtered[, \"SOJ_Class_NoMMS\"] == 'ALLEVIATING'\nlabels_neg <-\n  gi_data_filtered[, \"SOJ_Class_NoMMS\"] == 'AGGRAVATING'\n\n\n\nstop()\n\n\ncor(gi_data_R1$GIS_ij.NoDrug,gi_data_R2$GIS_ij.NoDrug)\n\n#updated_scores_cond <- scores_cond[scores_cond > 0]\n#updated_labels_pos <- labels_pos[scores_cond > 0]\n\n#stop()\n\n##scores_cond_pos < - scores_cond[scores_cond > 0]\n#score_ind_pos <- sort(updated_scores_cond, index.return = T, decreasing =T)$ix\n\n#updated_scores_cond_pos <- updated_scores_cond[score_ind_pos]\n#updated_labels_pos <- updated_labels_pos[score_ind_pos]\n\n\n\n#prec_pos <- sapply(1:length(updated_scores_cond_pos), function(i) {\n#  sum(updated_labels_pos[i:length(updated_labels_pos)]) / (length(updated_labels_pos) - i + 1)\n#})\n\n#prec_pos <- sapply(1:length(updated_scores_cond_pos),function(i){\n#  \n#})\n\n\nfdr_pos <- 1 - prec_pos\n\n\n\n",
+    "created" : 1508429851143.000,
+    "dirty" : true,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "3219380284",
+    "id" : "7523E7ED",
+    "lastKnownWriteTime" : 7306916032621314048,
+    "last_content_update" : 1514913328090,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

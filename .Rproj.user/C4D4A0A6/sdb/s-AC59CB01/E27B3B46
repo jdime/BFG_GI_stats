@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "drugs <- sapply(grep('^GIS',colnames(gi_data),val=T),function(x){strsplit(x,split='\\\\.')[[1]][2]})\n\n\nfor(drug in drugs){\n  name <- sprintf('GIS_ij.%s',drug)\n  #print(drug)\n  plot(gi_data_R1[,name],gi_data_R2[,name])\n  print(c(drug,format(cor(gi_data_R1[,name],gi_data_R2[,name]),digits=5)))\n}\n\n\n",
+    "created" : 1509043390346.000,
+    "dirty" : true,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "222643703",
+    "id" : "E27B3B46",
+    "lastKnownWriteTime" : 7310587293356523526,
+    "last_content_update" : 1509043851759,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled4"
+    },
+    "relative_order" : 9,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

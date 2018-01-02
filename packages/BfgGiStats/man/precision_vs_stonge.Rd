@@ -12,7 +12,7 @@ precision_vs_stonge(gi_data, control_name = "NoDrug",
 \arguments{
 \item{gi_data}{input genetic interaction table}
 
-\item{control_name}{condition which corresponds to 'NoMMS' in the St onge data}
+\item{control_name}{condition which corresponds to 'NoDrug' in the St onge data}
 
 \item{condition_name}{condition which corresponds to 'MMS' in the St onge data}
 

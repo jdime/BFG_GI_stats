@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "drugs <- sapply(colnames(gi_data)[grep('^FDR',colnames(gi_data))],function(x){strsplit(x,split='\\\\.')[[1]][3]})\ngi_data <-\n  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'YES',C_ij.HetDipl > 1000)\n\n\nfor(drug in drugs){\n#  gi_data[,]\n  \n  fdr_col <- paste(c('FDR.Internal_ij',drug),collapse='.')\n  gi_call_col <- paste(c('Z_GIS_ij.',drug,'_Class'),collapse='')\n  \n  print(drug)\n  print(table(gi_data[,gi_call_col]))\n  #print(max(gi_data[gi_data[,gi_call_col] == 'ALLEVIATING',fdr_col]))\n  #print(max(gi_data[gi_data[,gi_call_col] == 'AGGRAVATING',fdr_col]))\n}\n\nreto <- c()\nfor(i in c(1:1000)){\n  cnt <- linked_ey[linked_ey$C_ij.HetDipl.sum >= i,grep('^FDR',colnames(linked_ey))]\n  #reto <- c(reto,median(unlist(cnt)))\n  prob <- (sum(cnt < 0.05)/sum(cnt < 100))\n  reto <- c(reto,prob)\n}",
+    "created" : 1508788011774.000,
+    "dirty" : true,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "3269228854",
+    "id" : "17E03673",
+    "lastKnownWriteTime" : 7306002017311269376,
+    "last_content_update" : 1509047569777,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled3"
+    },
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

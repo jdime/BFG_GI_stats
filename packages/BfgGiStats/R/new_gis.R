@@ -2,7 +2,7 @@ devtools::use_package('dplyr')
 
 #' Update BFG-GI genetic interaction data
 #'
-#' @param gi_data BFG-GI dataframe
+#' @param gi_data input genetic interaction table
 #' @param pseudocount integer, pseudocount to add in the calculations
 #' @param count_data_grep_pattern grep pattern used to find count columns
 #' @param g_wt_vec how many generations each pool grew, in the same order as the count columns
@@ -117,8 +117,6 @@ update_gis <- function(gi_data,
   }))
   
   
-  
-  
   bc1 <- gi_data$Barcode_i
   bc2 <- gi_data$Barcode_j
   
@@ -150,6 +148,8 @@ update_gis <- function(gi_data,
     return(gis)
   }))
   
+  
+  
   gi_uncertainty <- t(sapply(1:nrow(w_xy_data), function(i) {
     
     g_xy <- g_xy_data[i, ]
@@ -163,29 +163,65 @@ update_gis <- function(gi_data,
     g_y_error <- g_xy_error_single_genes[bc2[i], ]
     g_wt_error <- g_wt_error
     
+    gis <- (g_xy*g_wt)/(g_x*g_y)
+    
+    
+    # numerator <- g_xy * g_wt
+    # numerator_error <- numerator*sqrt((g_xy_error/g_xy)^2 + (g_wt_error/g_wt)^2)
+    # 
+    # denominator <- g_x * g_y
+    # denominator_error <- denominator*sqrt((g_x_error/g_x)^2 + (g_y_error/g_y)^2)
+    # 
+    # ratio <- numerator / denominator
+    # 
+    # ratio_error <- ratio * sqrt((numerator_error/numerator)^2 + (denominator_error/denominator)^2)
+    # 
+    # log_ratio_error <- ratio_error/(ratio*log(2))
+    # 
+    # return(log_ratio_error)
     
     numerator <- g_xy - g_x - g_y
-    
+
     gis <- numerator/g_wt
-    
+
     numerator_error <- sqrt(g_xy_error^2 + g_x_error^2 + g_y_error^2)
-    
+
     gi_error <- abs(gis)*sqrt((numerator_error/numerator)^2 + (g_wt_error/g_wt)^2)
-    
+
     return(gi_error)
+    
+    
+    
   }))
   
-  
+  #gis_global <<- gis
+  #stop()
   
   #Modify data to replace old definition with new definitions
-  gi_data[, grep('^GI', colnames(gi_data))] <-
-    gis
-  z_cols <-
-    grep('Class',
-         grep('^Z_GIS', colnames(gi_data), val = T),
-         invert = T,
-         val = T)
-  gi_data[, z_cols] <- gis / gi_uncertainty
+  colnames(gis) <- sapply(colnames(gis),function(name){
+    gsub('^C_','GIS_',name)
+  })
+  
+  
+  gi_data <- cbind(gi_data,gis)
+  
+  
+  z_scores <- gis / gi_uncertainty
+  
+  colnames(z_scores) <- sapply(colnames(z_scores),function(name){
+    gsub('^GIS_','Z_GIS_',name)
+  })
+  
+  gi_data <- cbind(gi_data,z_scores)
+  
+  #gi_data[, grep('^GI', colnames(gi_data))] <-
+  #  gis
+  #z_cols <-
+  #  grep('Class',
+  #       grep('^Z_GIS', colnames(gi_data), val = T),
+  #       invert = T,
+  #       val = T)
+  #gi_data[, z_cols] <- gis / gi_uncertainty
   
   return(gi_data)
 }
