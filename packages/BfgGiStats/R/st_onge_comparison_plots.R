@@ -29,10 +29,17 @@ precision_vs_stonge <- function(gi_data,
                                   condition_name = "MMS",
                                   fdr_prefix = "FDR.Internal_ij",
                                   z_prefix = "Z_GIS_ij",
+                                  gi_prefix = "GIS_ij",
                                   fdr_cutoff = 0.05,
+                                  metr = 'prec',
                                   xlims = c(-5,5),
-                                  xlab = '-Log10 (Internal FDR)*sign(Z)') {
+                                  xlab = expression('-Log'[10]*'(p'['neutral']*')'),
+                                  ylab = 'St.Onge Validation Rate (%)',
+                                  draw_cutoffs = T,
+                                  cutoffs_drawn = NULL) {
   
+  
+  #Individual performance
   for (condition in c(control_name, condition_name)) {
     if (condition == control_name) {
       st_onge_class <- 'SOJ_Class_NoMMS'
@@ -49,16 +56,18 @@ precision_vs_stonge <- function(gi_data,
     
     fdr_column <- paste(c(fdr_prefix,condition),collapse='.')
     z_column <- paste(c(z_prefix,condition),collapse='.')
+    gi_column <- paste(c(gi_prefix,condition),collapse='.')
     
     labels_pos <-
       gi_data_filtered[, st_onge_class] == 'ALLEVIATING'
     labels_neg <-
       gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
     
-    scores_cond <- sign(gi_data_filtered[,z_column])*-log10(gi_data_filtered[,fdr_column])
+    scores_cond <- sign(gi_data_filtered[,z_column])*-log10(as.numeric(gi_data_filtered[,fdr_column]))# <= fdr_cutoff)*as.numeric(abs(gi_data_filtered[,z_column]))# > 0.01)
     
-    pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), 'prec')
-    neg_perf <- ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), 'prec')
+    
+    pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), metr)
+    neg_perf <- ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), metr)
     
     pos_cutoff <- pos_perf@x.values[[1]]
     pos_precision <- pos_perf@y.values[[1]]
@@ -77,23 +86,86 @@ precision_vs_stonge <- function(gi_data,
         pos_cutoff[pos_cutoff > 0],
         (pos_precision*100)[pos_cutoff > 0],
         type = 'l',
-        ylab = 'St.Onge Validation Rate (%)',
+        ylab = ylab,
         xlab = xlab,
-        main = 'GI Precision vs St. Onge',
+        main = '',#GI Precision vs St. Onge',
         lwd = 1,
         xlim = xlims,
-        ylim=c(0,100))
-      lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1)
+        ylim=c(0,100),
+        col='blue')
+      lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1,col='blue')
     } else{
       lines(pos_cutoff[pos_cutoff > 0],(pos_precision*100)[pos_cutoff > 0],lwd=1,col='red')
       lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1,col='red')
     }
   }
   
-  abline(v=-log10(fdr_cutoff), lty = 3, lwd = 0.7)
-  abline(v=log10(fdr_cutoff), lty = 3, lwd = 0.7)
+  #Joint performance
+  labels_pos <- c()
+  labels_neg <- c()
+  scores_cond <- c()
   
-  legend(xlims[1],50,legend=c(control_name, condition_name),fill=c('black','red'))
+  for (condition in c(control_name, condition_name)) {
+    if (condition == control_name) {
+      st_onge_class <- 'SOJ_Class_NoMMS'
+    }
+    if (condition == condition_name) {
+      st_onge_class <- 'SOJ_Class_MMS'
+    }
+    
+    fdr_column <- paste(c(fdr_prefix, condition), collapse = '.')
+    z_column <- paste(c(z_prefix, condition), collapse = '.')
+    gi_column <- paste(c(gi_prefix, condition), collapse = '.')
+    
+    labels_pos <-
+      c(labels_pos,gi_data_filtered[, st_onge_class] == 'ALLEVIATING')
+    labels_neg <-
+      c(labels_neg,gi_data_filtered[, st_onge_class] == 'AGGRAVATING')
+    
+    scores_cond <-
+      c(scores_cond,
+        sign(gi_data_filtered[, z_column]) * -log10(as.numeric(gi_data_filtered[, fdr_column])))
+  }
+  
+  
+  
+  pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), metr)
+  neg_perf <- ROCR::performance(ROCR::prediction(-scores_cond, labels_neg), metr)
+  
+  pos_cutoff <- pos_perf@x.values[[1]]
+  pos_precision <- pos_perf@y.values[[1]]
+  
+  neg_cutoff <- neg_perf@x.values[[1]]
+  neg_precision <- neg_perf@y.values[[1]]
+  
+  lines(pos_cutoff[pos_cutoff > 0],(pos_precision*100)[pos_cutoff > 0],lwd=1,col='black')
+  lines(-neg_cutoff[neg_cutoff > 0],(neg_precision*100)[neg_cutoff > 0],lwd=1,col='black')
+  
+  best_neg <- neg_cutoff[which.max(neg_precision)]
+  best_pos <- pos_cutoff[which.max(pos_precision)]
+  
+  #print(best_neg)
+  #labels_pos <-
+  #  gi_data_filtered[, 'SOJ_Class_NoMMS'] == 'ALLEVIATING'
+  #labels_neg <-
+  #  gi_data_filtered[, 'SOJ_Class_NoMMS'] == 'AGGRAVATING'
+#  
+#  labels_pos <- c(labels_pos,gi_data_filtered[, 'SOJ_Class_MMS'] == 'ALLEVIATING')
+#  labels_neg <- c(labels_neg,gi_data_filtered[, 'SOJ_Class_MMS'] == 'AGGRAVATING')
+  
+  
+  if(draw_cutoffs == T){
+    if(is.null(cutoffs_drawn)){
+      abline(v=-best_neg, lty = 3, lwd = 0.7)
+      abline(v = best_pos, lty = 3, lwd = 0.7)
+    }else{
+      abline(v= -cutoffs_drawn[1], lty = 3, lwd = 0.7)
+      abline(v = cutoffs_drawn[2], lty = 3, lwd = 0.7)
+    }
+  }
+  legend(xlims[1],35,legend=c(control_name, condition_name,'Combined'),fill=c('blue','red','black'))
+  
+  return(c(best_neg,best_pos))
 }
 
 

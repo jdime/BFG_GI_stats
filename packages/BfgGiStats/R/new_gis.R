@@ -194,6 +194,10 @@ update_gis <- function(gi_data,
     
   }))
   
+  
+  
+  
+  
   #gis_global <<- gis
   #stop()
   
@@ -208,12 +212,137 @@ update_gis <- function(gi_data,
   
   z_scores <- gis / gi_uncertainty
   
+  
+  w_x_data <- t(sapply(1:nrow(w_xy_data), function(i) {
+    g_x <- g_xy_single_genes[bc1[i], ]
+    g_wt <- g_xy_wt
+    w_x <- g_x/g_wt
+    w_x[w_x < 0] <- 0
+    
+    return(w_x)
+  }))
+  
+  w_y_data <- t(sapply(1:nrow(w_xy_data), function(i) {
+    g_y <- g_xy_single_genes[bc2[i], ]
+    g_wt <- g_xy_wt
+    w_y <- g_y/g_wt
+    w_y[w_y < 0] <- 0
+    
+    return(w_y)
+  }))
+  
+  
+  w_x_error <- t(sapply(1:nrow(w_xy_data), function(i) {
+    g_x <- g_xy_single_genes[bc1[i], ]
+    g_wt <- g_xy_wt
+    g_x_error <- g_xy_error_single_genes[bc1[i], ]
+    g_wt_error <- g_wt_error
+    
+    w_x <- g_x/g_wt
+    err <- abs(w_x)*sqrt((g_x_error/g_x)^2 + (g_wt_error/g_wt)^2)
+    
+    return(err)
+  }))
+  
+  w_y_error <- t(sapply(1:nrow(w_xy_data), function(i) {
+    g_y <- g_xy_single_genes[bc2[i], ]
+    g_wt <- g_xy_wt
+    g_y_error <- g_xy_error_single_genes[bc2[i], ]
+    g_wt_error <- g_wt_error
+    
+    
+    
+    
+    w_y <- g_y/g_wt
+    err <- abs(w_y)*sqrt((g_y_error/g_y)^2 + (g_wt_error/g_wt)^2)
+    return(err)
+  }))
+  
+  w_xy_error <- t(sapply(1:nrow(w_xy_data), function(i) {
+    g_xy <- g_xy_data[i, ]
+    g_wt <- g_xy_wt
+    
+    g_xy_error <- g_xy_error[i, ]
+    g_wt_error <- g_wt_error
+    
+    
+    
+    w_xy <- g_xy/g_wt
+    
+    err <- abs(w_xy)*sqrt((g_xy_error/g_xy)^2 + (g_wt_error/g_wt)^2)
+    
+    #err <- abs(w_y)*sqrt((g_y_error/g_y)^2 + (g_wt_error/g_wt)^2)
+    return(err)
+  }))
+  
+  
+  
+  print(colnames(w_xy_error))
+  # Set Some column names
+  colnames(w_x_data) <- colnames(w_x_data) %>% sapply(function(name){
+    gsub('^C_ij.','W_i.', name)
+  })
+  colnames(w_y_data) <- colnames(w_y_data) %>% sapply(function(name){
+    gsub('^C_ij.','W_j.', name)
+  })
+  colnames(w_xy_data) <- colnames(w_xy_data) %>% sapply(function(name){
+    gsub('^C_ij.','W_ij.', name)
+  })
+  
+  colnames(w_x_error) <- colnames(w_x_error) %>% sapply(function(name){
+    gsub('^C_ij.','W_i_SE.', name)
+  })
+  colnames(w_y_error) <- colnames(w_y_error) %>% sapply(function(name){
+    gsub('^C_ij.','W_j_SE.', name)
+  })
+  colnames(w_xy_error) <- colnames(w_x_error) %>% sapply(function(name){
+    gsub('^W_i_SE.','W_ij_SE.', name)
+  })
+  
+  
+  
+  
+  
+  
+  #print(colnames(w_x_data))
+  #
+  #print(colnames(w_y_))
+  print(colnames(w_xy_error))
+  
+  
+  
+  #colnames()
+  
+  
   colnames(z_scores) <- sapply(colnames(z_scores),function(name){
     gsub('^GIS_','Z_GIS_',name)
   })
   
-  gi_data <- cbind(gi_data,z_scores)
+  #Not returned in latest version
+  colnames(gi_uncertainty) <- colnames(gis)
+  colnames(gi_uncertainty) <- sapply(colnames(gi_uncertainty),function(name){
+    gsub('^GIS_','SE_GIS_',name)
+  })
   
+  
+  #Correct fitness
+  w_xy_data[w_xy_data < 0] <- 0
+  
+  
+  gi_data <- cbind(gi_data,
+                   
+                   w_x_data,
+                   w_y_data,
+                   w_xy_data,
+                   
+                   w_x_error,
+                   w_y_error,
+                   w_xy_error,
+                   
+                   gi_uncertainty,
+                   z_scores)
+  
+  #Old way of updating the data
   #gi_data[, grep('^GI', colnames(gi_data))] <-
   #  gis
   #z_cols <-

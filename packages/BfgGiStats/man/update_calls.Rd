@@ -5,8 +5,9 @@
 \title{Update genetic interaction calls based on either Z metrics or internal FDR}
 \usage{
 update_calls(gi_data, z_score_cols = NULL, fdr_cols = NULL,
-  fdr_cutoff = 0.05, use_z = F, z_cutoff_neg = NULL,
-  z_cutoff_pos = NULL)
+  gi_cols = NULL, fdr_cutoff_pos = 0.05, fdr_cutoff_neg = 0.05,
+  z_cutoff_neg = 0, z_cutoff_pos = 0, gi_cutoff_neg = 0,
+  gi_cutoff_pos = 0)
 }
 \arguments{
 \item{gi_data}{input genetic interaction table}
@@ -15,15 +16,15 @@ update_calls(gi_data, z_score_cols = NULL, fdr_cols = NULL,
 
 \item{fdr_cols}{which columns correspond to internal FDRs - default is to use grep to find automatically}
 
-\item{fdr_cutoff}{internal FDR cutoff to make GI calls - defaults to 0.05}
-
-\item{use_z}{use Z scores instead of FDR to make GI calls? defaults to False}
-
 \item{z_cutoff_neg}{if use_z is True, Z-cutoff for negative interactions}
 
 \item{z_cutoff_pos}{if use_z is True, Z-cutoff for positive interactions}
 
 \item{z_class_cols}{which columns correspond to Z-based classifications - default is to use grep to find automatically}
+
+\item{fdr_cutoff}{internal FDR cutoff to make GI calls - defaults to 0.05}
+
+\item{use_z}{use Z scores instead of FDR to make GI calls? defaults to False}
 }
 \value{
 a version of gi_data with GI calls updated

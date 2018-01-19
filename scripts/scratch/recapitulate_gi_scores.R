@@ -1,10 +1,10 @@
 this.dir <- dirname(parent.frame(2)$ofile)
 setwd(this.dir)
-setwd('../data')
+setwd('../../data')
 
-gi_data <- read.table('table_s1.tsv', head = T, stringsAsFactors = F)
-gi_data <-
-  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'no')
+gi_data <- read.table('table_s1_old.tsv', head = T, stringsAsFactors = F)
+#gi_data <-
+#  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'no')
 
 count_data <- gi_data[, grep('^C_', colnames(gi_data))]
 
@@ -22,14 +22,24 @@ neutral_genes <-
   unique(unlist(
     dplyr::filter(
       gi_data,
-      Type_of_gene_i == 'Neutral' & Type_of_gene_j == 'Neutral'
+      Type_of_gene_i == 'Neutral' & Type_of_gene_j == 'Neutral' & Remove_by_Chromosomal_distance_or_SameGene == 'no'
     )[, 1:2]
   ))
 
 
 marginal_counts_original <- sapply(genes, function(gene) {
+  #WRONG WAY TO DO THIS UGH
   apply(freq_data[which(gi_data[, 1] == gene |
                           gi_data[, 2] == gene), ], 2, sum)
+  
+  query <- gi_data[,1] == gene & gi_data$Type_of_gene_j == "Neutral"
+  query <- query | (gi_data[,2] == gene & gi_data$Type_of_gene_i == "Neutral")
+  
+  #apply(freq_data[which(gi_data[, 1] == gene |
+  #                        gi_data[, 2] == gene), ], 2, sum)
+  
+  apply(freq_data[query, ], 2, sum)
+  
 })
 
 marginal_counts <- t(marginal_counts_original + pseudo_counts)
@@ -44,8 +54,6 @@ relative_dms <- freq_data_dm / freq_data_dm[, 'C_ij.HetDipl']
 neutral_freq <- freq_data[gi_data$Type_of_gene_i == 'Neutral' & gi_data$Type_of_gene_j == 'Neutral',]
 neutral_freq <- apply(neutral_freq,2,sum) + pseudo_counts
 wt_norm <- neutral_freq/neutral_freq[1]
-
-
 
 
 wt_normalized_relative_marginals <-
@@ -69,15 +77,15 @@ wt_normalized_relative_dms <- wt_normalized_relative_dms#/sm_wt
 #new_gis <- cxzc
 
 
-new_gis <- t(sapply(1:nrow(gi_data), function(i) {
-  log2(wt_normalized_relative_dms[i, ]/(wt_normalized_relative_marginals[gi_data[i, 1], ] *
-    wt_normalized_relative_marginals[gi_data[i, 2], ]))
-}))
-
 #new_gis <- t(sapply(1:nrow(gi_data), function(i) {
-#  wt_normalized_relative_dms[i, ] - (wt_normalized_relative_marginals[gi_data[i, 1], ] *
-#    wt_normalized_relative_marginals[gi_data[i, 2], ])
+#  log2(wt_normalized_relative_dms[i, ]/(wt_normalized_relative_marginals[gi_data[i, 1], ] *
+#    wt_normalized_relative_marginals[gi_data[i, 2], ]))
 #}))
+
+new_gis <- t(sapply(1:nrow(gi_data), function(i) {
+  wt_normalized_relative_dms[i, ] - (wt_normalized_relative_marginals[gi_data[i, 1], ] *
+    wt_normalized_relative_marginals[gi_data[i, 2], ])
+}))
 
 g1 <- as.vector(new_gis[,2:ncol(new_gis)])
 g2 <- as.vector(unlist(gi_data[,grep('^GI',colnames(gi_data))]))
@@ -105,7 +113,7 @@ abline(
 )
 
 dm_wt <- wt_normalized_relative_dms[gi_data$Type_of_gene_i == 'Neutral' &
-                                      gi_data$Type_of_gene_j == 'Neutral', 2:ncol(wt_normalized_relative_dms)][,'C_ij.MMS']
+                                      gi_data$Type_of_gene_j == 'Neutral' & gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no', 2:ncol(wt_normalized_relative_dms)][,'C_ij.MMS']
 
 hist(dm_wt,
      xlab = 'Neutral-Neutral Double Mutant Fitness',
