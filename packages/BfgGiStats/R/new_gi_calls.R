@@ -25,19 +25,19 @@ add_p_values <- function(gi_data,
   #  dplyr::filter(gi_data, Remove_by_Chromosomal_distance_or_SameGene == 'no')
   
   ddr_pairs <-
-    gi_data$Type_of_gene_i == 'DNA_repair' &
-    gi_data$Type_of_gene_j == 'DNA_repair'
+    gi_data$Type_of_gene_x == 'DNA_repair' &
+    gi_data$Type_of_gene_y == 'DNA_repair'
   
   #Neutral-Neutral pairs
   if(nn_pair_type == 'broad'){
     #Can define all non DNA_repair - DNA_repair as neutral
     nn_pairs <-
-    gi_data$Type_of_gene_i != 'DNA_repair' & gi_data$Type_of_gene_j != 'DNA_repair'
+    gi_data$Type_of_gene_x != 'DNA_repair' & gi_data$Type_of_gene_y != 'DNA_repair'
   }else if(nn_pair_type == 'narrow'){
     #Or just neutral-neutral pairs
     nn_pairs <-
-      gi_data$Type_of_gene_i == 'Neutral' &
-      gi_data$Type_of_gene_j == 'Neutral'
+      gi_data$Type_of_gene_x == 'Neutral' &
+      gi_data$Type_of_gene_y == 'Neutral'
   }
   
   gi_cols <- grep(gi_grep_pattern, colnames(gi_data), val = T)
@@ -189,7 +189,7 @@ add_p_values <- function(gi_data,
     strsplit(name,split='\\.')[[1]][2]
   })
   fdr_names <- sapply(drugs,function(drug){
-    paste(c('FDR.Internal_ij.',drug),collapse='')
+    paste(c('FDR.neutral_xy.',drug),collapse='')
   })
   
   colnames(fdr_matrix) <- fdr_names

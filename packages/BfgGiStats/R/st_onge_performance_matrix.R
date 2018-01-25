@@ -1,11 +1,11 @@
 make_performance_matrix <- function(gi_data,
                                     control_name = "NoDrug",
                                     condition_name = "MMS",
-                                    x_axis_grep = "FDR.Internal_ij",
-                                    y_axis_grep = "^GIS_ij",
+                                    x_axis_grep = "FDR.neutral_xy",
+                                    y_axis_grep = "^GIS_xy",
                                     metr = 'mat',
                                     x_cutoff_vec = c(0:50)/5,
-                                    y_cutoff_vec = c(0:20)/200,
+                                    y_cutoff_vec = c(0:20)/100,
                                     st_onge_class_to_analyze = 'both')
                                     {
   negative_result_matrix <- matrix(nrow=length(x_cutoff_vec),ncol=length(y_cutoff_vec))
@@ -123,10 +123,10 @@ performance_heatmap <- function(mat,
     
   }
   if(is.null(min_val)){
-    min_val <- min(mat)  
+    min_val <- 0.7#min(mat)  
   }
   if(is.null(max_val)){
-    max_val <- max(mat)
+    max_val <- 0.3#max(mat)
   }
   x_vals <- as.numeric(rownames(mat))
   y_vals <- as.numeric(colnames(mat))

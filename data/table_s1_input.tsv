@@ -1,4 +1,4 @@
-Barcode_i	Barcode_j	C_ij.HetDipl	C_ij.NoDrug	C_ij.DMSO	C_ij.MMS	C_ij.4NQO	C_ij.BLMC	C_ij.ZEOC	C_ij.HYDX	C_ij.DXRB	C_ij.CMPT	C_ij.CSPL	Chromosomal_distance_bp	Remove_by_Chromosomal_distance_or_SameGene	Type_of_gene_i	Type_of_gene_j	SOJ_E_NoMMS	SOJ_E_MMS	SOJ_Class_NoMMS	SOJ_Class_MMS
+Barcode_x	Barcode_y	C_xy.HetDipl	C_xy.NoDrug	C_xy.DMSO	C_xy.MMS	C_xy.4NQO	C_xy.BLMC	C_xy.ZEOC	C_xy.HYDX	C_xy.DXRB	C_xy.CMPT	C_xy.CSPL	Chromosomal_distance_bp	Remove_by_Chromosomal_distance_or_SameGene	Type_of_gene_x	Type_of_gene_y	SOJ_E_NoMMS	SOJ_E_MMS	SOJ_Class_NoMMS	SOJ_Class_MMS
 HO_donor_1	APT2_recipient_1	325	191	175	234	200	242	210	221	217	273	201	1296486	no	Neutral	Neutral	NA	NA	NA	NA
 HO_donor_1	GAL2_recipient_1	197	158	150	193	166	165	150	162	169	206	152	NA	no	Neutral	Neutral	NA	NA	NA	NA
 HO_donor_1	HO_recipient_1	298	3	3	4	4	4	5	4	4	5	4	0	YES	Neutral	Neutral	NA	NA	NA	NA

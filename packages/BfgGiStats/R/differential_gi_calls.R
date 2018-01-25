@@ -21,17 +21,17 @@ differential_gi_analysis <- function(gi_data,
   if(nn_pair_type == 'broad'){
     #Can define all non DNA_repair - DNA_repair as neutral
     nn_pairs <-
-      gi_data$Type_of_gene_i != 'DNA_repair' | gi_data$Type_of_gene_j != 'DNA_repair'
+      gi_data$Type_of_gene_x != 'DNA_repair' | gi_data$Type_of_gene_y != 'DNA_repair'
   }else if(nn_pair_type == 'narrow'){
     #Or just neutral-neutral pairs
     nn_pairs <-
-      gi_data$Type_of_gene_i == 'Neutral' &
-      gi_data$Type_of_gene_j == 'Neutral'
+      gi_data$Type_of_gene_x == 'Neutral' &
+      gi_data$Type_of_gene_y == 'Neutral'
   }
   
   ddr_pairs <-
-    gi_data$Type_of_gene_i == 'DNA_repair' &
-    gi_data$Type_of_gene_j == 'DNA_repair'
+    gi_data$Type_of_gene_x == 'DNA_repair' &
+    gi_data$Type_of_gene_y == 'DNA_repair'
   
   
   z_cols <- grep('Class',grep('Z_GIS',colnames(gi_data),val=T),invert=T,val=T)
@@ -50,14 +50,14 @@ differential_gi_analysis <- function(gi_data,
         
         
         
-        z_name1 <- paste(c('Z_GIS_ij', condition1), collapse = '.')
-        z_name2 <- paste(c('Z_GIS_ij', condition2), collapse = '.')
+        z_name1 <- paste(c('Z_GIS_xy', condition1), collapse = '.')
+        z_name2 <- paste(c('Z_GIS_xy', condition2), collapse = '.')
         
-        gi_name1 <- paste(c('GIS_ij', condition1), collapse = '.')
-        gi_name2 <- paste(c('GIS_ij', condition2), collapse = '.')
+        gi_name1 <- paste(c('GIS_xy', condition1), collapse = '.')
+        gi_name2 <- paste(c('GIS_xy', condition2), collapse = '.')
         
-        gi_err_name1 <- paste(c('SE_GIS_ij', condition1), collapse = '.')
-        gi_err_name2 <- paste(c('SE_GIS_ij', condition2), collapse = '.')
+        gi_err_name1 <- paste(c('SE_GIS_xy', condition1), collapse = '.')
+        gi_err_name2 <- paste(c('SE_GIS_xy', condition2), collapse = '.')
         
         
         z_class_name1 <- paste(c(z_name1,'Class'),collapse='_')
@@ -66,8 +66,8 @@ differential_gi_analysis <- function(gi_data,
         #nn_pairs <- (gi_data[,z_class_name1] == gi_data[,z_class_name2])
         
         
-        nn_pairs <- (gi_data[,z_class_name1] == 'NEUTRAL' & gi_data[,z_class_name2] == 'NEUTRAL')# | (gi_data$Type_of_gene_i != 'DNA_repair' | gi_data$Type_of_gene_j != 'DNA_repair')
-        #nn_pairs <- (gi_data$Type_of_gene_i != 'DNA_repair' | gi_data$Type_of_gene_j != 'DNA_repair')
+        #nn_pairs <- (gi_data[,z_class_name1] == 'NEUTRAL' & gi_data[,z_class_name2] == 'NEUTRAL')# | (gi_data$Type_of_gene_i != 'DNA_repair' | gi_data$Type_of_gene_y != 'DNA_repair')
+        nn_pairs <- (gi_data$Type_of_gene_x != 'DNA_repair' | gi_data$Type_of_gene_y != 'DNA_repair')
         
         nn_z_scores_cond <-
           (gi_data[nn_pairs, gi_name1] - gi_data[nn_pairs, gi_name2])/sqrt(gi_data[nn_pairs, gi_err_name1]^2 + gi_data[nn_pairs, gi_err_name2]^2)
@@ -153,22 +153,22 @@ differential_gi_analysis <- function(gi_data,
             }
             
             #Using normal distribuion to calculate expected
-            #expected <-
-            #  pnorm(
-            #    #non_nn_scores_cond[i],
-            #    all_scores_cond[i],
-            #    mean = mu,
-            #    sd = sigma,
-            #    lower.tail = use_lower_tail
-            #  )*length(all_scores_cond)
+            expected <-
+              pnorm(
+                #non_nn_scores_cond[i],
+                all_scores_cond[i],
+                mean = mu,
+                sd = sigma,
+                lower.tail = use_lower_tail
+              )#*length(all_scores_cond)
             
             #return(expected)
             
-            if(sign(all_scores_cond[i]) == 1){
-              expected <- empPvals(all_scores_cond[i],nn_scores_cond)
-            }else{
-              expected <- empPvals(-all_scores_cond[i],-nn_scores_cond)
-            }
+            #if(sign(all_scores_cond[i]) == 1){
+            #  expected <- empPvals(all_scores_cond[i],nn_scores_cond)
+            #}else{
+            #  expected <- empPvals(-all_scores_cond[i],-nn_scores_cond)
+            #}
             #expected <- empPvals(all_scores_cond[i],nn_scores_cond)
             
             
@@ -197,7 +197,7 @@ differential_gi_analysis <- function(gi_data,
             
             #return(fdr)
             #No sense returning fdr estimates >100%
-            return(min(fdr, 1))
+            #return(min(fdr, 1))
           })
         })
         fdrs_pos <- precision_list[[1]]
@@ -216,7 +216,7 @@ differential_gi_analysis <- function(gi_data,
         
        # print(fdrs_pos)
         
-       # hist(fdr_scores,main=paste(c(condition1,condition2),collapse=' - '))
+       hist(fdr_scores,main=paste(c(condition1,condition2),collapse=' - '))
        
        
        fdr_scores <- qvalue(fdr_scores)$q
@@ -235,10 +235,10 @@ differential_gi_analysis <- function(gi_data,
         
         
         
-        retvec <- cbind(ddr_data[which(sig),c("Barcode_i","Barcode_j")],
+        retvec <- cbind(ddr_data[which(sig),c("Barcode_x","Barcode_y")],
                         rep(condition1,sum(sig)),
                         rep(condition2,sum(sig)),
-                        ddr_data[which(sig),c("Type_of_gene_i","Type_of_gene_j")],
+                        ddr_data[which(sig),c("Type_of_gene_x","Type_of_gene_y")],
                         ddr_data[which(sig),c(z_name1,z_name2)],
                         ddr_data[which(sig),c(gi_name1,gi_name2)],
                         ddr_data[which(sig),c(z_class_name1,z_class_name2)],
@@ -248,12 +248,12 @@ differential_gi_analysis <- function(gi_data,
         
         colnames(retvec) <-
           c(
-            'Barcode_i',
-            'Barcode_j',
+            'Barcode_x',
+            'Barcode_y',
             'Condition1',
             'Condition2',
-            'Type_of_gene_i',
-            'Type_of_gene_j',
+            'Type_of_gene_x',
+            'Type_of_gene_y',
             'Z_Condition1',
             'Z_Condition2',
             'GI_Condition1',
@@ -275,12 +275,12 @@ differential_gi_analysis <- function(gi_data,
 # 
 # differential_calls_by_gene <- function(differential_calls, fdr_cutoff = 0.05) {
 #   Gene1 <-
-#     sapply(differential_calls$Barcode_i, function(name) {
+#     sapply(differential_calls$Barcode_x, function(name) {
 #       strsplit(name, split = '_')[[1]][1]
 #     })
 #   
 #   Gene2 <-
-#     sapply(differential_calls$Barcode_j, function(name) {
+#     sapply(differential_calls$Barcode_y, function(name) {
 #       strsplit(name, split = '_')[[1]][1]
 #     })
 #   
@@ -293,7 +293,7 @@ differential_gi_analysis <- function(gi_data,
 #   
 #   #grouped_calls <- differential_calls %>% group_by(Gene1,Gene2)#,Condition1,Condition2)
 #   
-#   #grouped_indices <- attributes(grouped_calls)$indices
+#   #grouped_xndices <- attributes(grouped_calls)$indices
 #   
 #   split_calls <-
 #     split(
@@ -404,8 +404,8 @@ differential_calls_histogram <- function(differential_calls){
         differential_calls,
         Class_Condition1 == "NEUTRAL" &
           Class_Condition2 == "NEUTRAL"# &
-          #Type_of_gene_i != 'Neutral' &
-          #Type_of_gene_j != 'Neutral'
+          #Type_of_gene_x != 'Neutral' &
+          #Type_of_gene_y != 'Neutral'
       )$DeltaZ
     ),
     breaks = orig_hist$breaks,
@@ -419,8 +419,8 @@ differential_calls_histogram <- function(differential_calls){
     as.matrix(
       filter(
         differential_calls,
-        Type_of_gene_i == 'Neutral' |
-          Type_of_gene_j == 'Neutral'
+        Type_of_gene_x == 'Neutral' |
+          Type_of_gene_y == 'Neutral'
       )$DeltaZ
     ),
     add = T,

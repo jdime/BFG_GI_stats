@@ -3,12 +3,12 @@ devtools::use_package('metap')
 average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
 
   Gene1 <-
-    sapply(gi_data$Barcode_i, function(name) {
+    sapply(gi_data$Barcode_x, function(name) {
       strsplit(name, split = '_')[[1]][1]
     })
   
   Gene2 <-
-    sapply(gi_data$Barcode_j, function(name) {
+    sapply(gi_data$Barcode_y, function(name) {
       strsplit(name, split = '_')[[1]][1]
     })
   
@@ -27,6 +27,9 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
     dat <- gi_data[i,type_columns]
     return(dat[alpha_order[i,]])
   })))
+  
+  gi_data[,type_columns[1]] <- unlist(gi_data[,type_columns[1]])
+  gi_data[,type_columns[2]] <- unlist(gi_data[,type_columns[2]])
   
   Gene1 <- gene_columns[,1]
   Gene2 <- gene_columns[,2]
@@ -62,13 +65,16 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
       
       new_gis <- sapply(1:length(gis_columns),function(i){
         var_weights <- 1/(testset[,err_columns[i]]^2)
+        #var_weights <- rep(1,length(testset[,err_columns[i]]))
         weighted.mean(x = testset[,gis_columns[i]],w = var_weights)
         #mean(testset[,gis_columns[i]])
       })
       
       new_errs <- sapply(1:length(gis_columns),function(i){
         var_weights <- 1/(testset[,err_columns[i]]^2)
-        sqrt(sum((testset[,err_columns[i]]*var_weights)^2))/sum(var_weights)
+        sum_var <- sum(var_weights)
+        #var_weights <- rep(1,length(testset[,err_columns[i]]))
+        sqrt(sum((testset[,err_columns[i]]*(var_weights/sum_var))^2))
         #sqrt(sum((testset[,err_columns[i]])^2))/nrow(testset)
       })
       
@@ -76,7 +82,8 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
       
       new_fdrs <- sapply(1:length(fdr_columns),function(i){
         var_weights <- 1/(testset[,err_columns[i]]^2)
-
+        #var_weights <- rep(1,length(testset[,err_columns[i]]))
+  
         p_vals <- testset[,fdr_columns[i]]
         if(length(p_vals) == 1){
           return(p_vals)
@@ -94,8 +101,17 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
           p_vals[gi_scores < 0] <- 1 - p_vals[gi_scores < 0]
         }
         
-        #Stops it from crashing
+        #Next two lines stops from crashing
+        #This will return p < 0.05 in all cases in the data
         p_vals[p_vals < 1e-200] <- 1e-200
+        #These cases are not in the data, but future proofing
+        #If p value approximately close to 1 in opposite direction, return 1 as meta-score
+        if(max(p_vals) == 1){
+          return(1)
+        }
+        
+        #print(testset)
+        #print(p_vals)
         
         nomin_p <- metap::sumz(p_vals, weights = var_weights)$p[1]
         
@@ -112,23 +128,55 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
       
       
       #Update w metrics
-      w_xy_err_columns <- grep('W_ij_SE\\.',colnames(gi_data))       
-      w_xy_columns <- grep('W_ij\\.',colnames(gi_data))       
+      w_x_columns <- grep('W_x\\.',colnames(gi_data))       
+      w_x_err_columns <- grep('W_x_SE\\.',colnames(gi_data))       
       
-      new_w_xy_errs <- sapply(1:length(w_xy_err_columns),function(i){
-        var_weights <- 1/(testset[,w_xy_err_columns[i]]^2)
-        sqrt(sum((testset[,w_xy_err_columns[i]]*var_weights)^2))/sum(var_weights)
+      w_y_columns <- grep('W_y\\.',colnames(gi_data))       
+      w_y_err_columns <- grep('W_y_SE\\.',colnames(gi_data))       
+      
+      w_xy_columns <- grep('W_xy\\.',colnames(gi_data))       
+      w_xy_err_columns <- grep('W_xy_SE\\.',colnames(gi_data))       
+      
+      
+      new_w_x <- sapply(1:length(w_x_columns),function(i){
+        var_weights <- 1/(testset[,err_columns[i]]^2)
+        weighted.mean(x = testset[,w_x_columns[i]],w = var_weights)
+        #mean(testset[,gis_columns[i]])
+      })
+      new_w_x_errs <- sapply(1:length(w_x_err_columns),function(i){
+        var_weights <- 1/(testset[,err_columns[i]]^2)
+        sum_var <- sum(var_weights)
+        sqrt(sum((testset[,w_x_err_columns[i]]*(var_weights/sum_var))^2))#/sum(var_weights)
+      })
+      
+      new_w_y <- sapply(1:length(w_y_columns),function(i){
+        var_weights <- 1/(testset[,err_columns[i]]^2)
+        weighted.mean(x = testset[,w_y_columns[i]],w = var_weights)
+        #mean(testset[,gis_columns[i]])
+      })
+      new_w_y_errs <- sapply(1:length(w_y_err_columns),function(i){
+        var_weights <- 1/(testset[,err_columns[i]]^2)
+        sum_var <- sum(var_weights)
+        sqrt(sum((testset[,w_y_err_columns[i]]*(var_weights/sum_var))^2))#/sum(var_weights)
       })
       
       new_w_xy <- sapply(1:length(w_xy_columns),function(i){
-        var_weights <- 1/(testset[,w_xy_err_columns[i]]^2)
+        var_weights <- 1/(testset[,err_columns[i]]^2)
         weighted.mean(x = testset[,w_xy_columns[i]],w = var_weights)
         #mean(testset[,gis_columns[i]])
       })
+      new_w_xy_errs <- sapply(1:length(w_xy_err_columns),function(i){
+        var_weights <- 1/(testset[,err_columns[i]]^2)
+        sum_var <- sum(var_weights)
+        sqrt(sum((testset[,w_xy_err_columns[i]]*(var_weights/sum_var))^2))#/sum(var_weights)
+      })
       
-      
-      ret_vec[w_xy_err_columns] <- new_w_xy_errs
+      ret_vec[w_x_columns] <- new_w_x
+      ret_vec[w_x_err_columns] <- new_w_x_errs
+      ret_vec[w_y_columns] <- new_w_y
+      ret_vec[w_y_err_columns] <- new_w_y_errs
       ret_vec[w_xy_columns] <- new_w_xy
+      ret_vec[w_xy_err_columns] <- new_w_xy_errs
       
       
       ret_df <- rbind(ret_df,ret_vec)
@@ -139,7 +187,7 @@ average_gi_data_by_gene <- function(gi_data,type_column_grep = 'Type_of_gene'){
   
   gi_data_grp <- gi_data_grp[, preserved_colnames]
   
-  gi_data_grp <- gi_data_grp[,grep('^C_ij',names(gi_data_grp),invert=T)]
+  gi_data_grp <- gi_data_grp[,grep('^C_xy',names(gi_data_grp),invert=T)]
   
   #stop()
   

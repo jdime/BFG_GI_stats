@@ -5,7 +5,7 @@
 \title{Creates a scatterplot of genetic interaction scores vs St. Onge}
 \usage{
 st_onge_scatterplot(gi_data, control_name = "NoDrug",
-  condition_name = "MMS", gi_prefix = "GIS_ij")
+  condition_name = "MMS", gi_prefix = "GIS_xy")
 }
 \arguments{
 \item{gi_data}{input genetic interaction table}

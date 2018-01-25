@@ -5,8 +5,8 @@
 \title{Plots FPR-Sensitivty curve versus the St. Onge data}
 \usage{
 st_onge_auc_plot(gi_data, control_name = "NoDrug", condition_name = "MMS",
-  fdr_prefix = "FDR.Internal_ij", z_prefix = "Z_GIS_ij", old_data = F,
-  gi_prefix = "GIS_ij", neg_col = rgb(230/255, 155/255, 34/255),
+  fdr_prefix = "FDR.neutral_xy", z_prefix = "Z_GIS_xy", old_data = F,
+  gi_prefix = "GIS_xy", neg_col = rgb(230/255, 155/255, 34/255),
   pos_col = rgb(90/255, 179/255, 228/255), lwd = 3)
 }
 \arguments{

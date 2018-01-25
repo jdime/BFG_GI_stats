@@ -27,13 +27,13 @@ trapezoid_integration <- function(x, y) {
 precision_vs_stonge <- function(gi_data,
                                   control_name = "NoDrug",
                                   condition_name = "MMS",
-                                  fdr_prefix = "FDR.Internal_ij",
-                                  z_prefix = "Z_GIS_ij",
-                                  gi_prefix = "GIS_ij",
+                                  fdr_prefix = "FDR.neutral_xy",
+                                  z_prefix = "Z_GIS_xy",
+                                  gi_prefix = "GIS_xy",
                                   fdr_cutoff = 0.05,
                                   metr = 'prec',
                                   xlims = c(-5,5),
-                                  xlab = expression('-Log'[10]*'(p'['neutral']*')'),
+                                  xlab = expression('-Log'[10]*'(q'['neutral']*')'),
                                   ylab = 'St.Onge Validation Rate (%)',
                                   draw_cutoffs = T,
                                   cutoffs_drawn = NULL) {
@@ -63,7 +63,7 @@ precision_vs_stonge <- function(gi_data,
     labels_neg <-
       gi_data_filtered[, st_onge_class] == 'AGGRAVATING'
     
-    scores_cond <- sign(gi_data_filtered[,z_column])*-log10(as.numeric(gi_data_filtered[,fdr_column]))# <= fdr_cutoff)*as.numeric(abs(gi_data_filtered[,z_column]))# > 0.01)
+    scores_cond <- sign(gi_data_filtered[,z_column])*-log10(as.numeric(gi_data_filtered[,fdr_column]))#*as.numeric(abs(gi_data_filtered[,gi_column]) > 0.05)
     
     
     pos_perf <- ROCR::performance(ROCR::prediction(scores_cond, labels_pos), metr)
@@ -124,7 +124,7 @@ precision_vs_stonge <- function(gi_data,
     
     scores_cond <-
       c(scores_cond,
-        sign(gi_data_filtered[, z_column]) * -log10(as.numeric(gi_data_filtered[, fdr_column])))
+        sign(gi_data_filtered[, z_column]) * -log10(as.numeric(gi_data_filtered[, fdr_column])))#*as.numeric(abs(gi_data_filtered[,gi_column]) > 0.05))
   }
   
   
@@ -185,10 +185,10 @@ precision_vs_stonge <- function(gi_data,
 st_onge_auc_plot <- function(gi_data,
                              control_name = "NoDrug",
                              condition_name = "MMS",
-                             fdr_prefix = "FDR.Internal_ij",
-                             z_prefix = "Z_GIS_ij",
+                             fdr_prefix = "FDR.neutral_xy",
+                             z_prefix = "Z_GIS_xy",
                              old_data = F,
-                             gi_prefix = "GIS_ij",
+                             gi_prefix = "GIS_xy",
                              neg_col = rgb(230/255,155/255,34/255),
                              pos_col = rgb(90/255,179/255,228/255),
                              lwd = 3){
@@ -272,7 +272,7 @@ st_onge_auc_plot <- function(gi_data,
 st_onge_scatterplot <- function(gi_data,
                                 control_name = "NoDrug",
                                 condition_name = "MMS",
-                                gi_prefix = "GIS_ij"){
+                                gi_prefix = "GIS_xy"){
   for (condition in c(control_name, condition_name)) {
     if (condition == control_name) {
       st_onge_e <- 'SOJ_E_NoMMS'

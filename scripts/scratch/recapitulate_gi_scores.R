@@ -29,8 +29,8 @@ neutral_genes <-
 
 marginal_counts_original <- sapply(genes, function(gene) {
   #WRONG WAY TO DO THIS UGH
-  apply(freq_data[which(gi_data[, 1] == gene |
-                          gi_data[, 2] == gene), ], 2, sum)
+  #apply(freq_data[which((gi_data[, 1] == gene |
+  #                        gi_data[, 2] == gene)), ], 2, sum)
   
   query <- gi_data[,1] == gene & gi_data$Type_of_gene_j == "Neutral"
   query <- query | (gi_data[,2] == gene & gi_data$Type_of_gene_i == "Neutral")
@@ -129,6 +129,8 @@ abline(
 gi_data[,grep('^GI',colnames(gi_data))] <- new_gis[,2:ncol(new_gis)]
 z_cols <- grep('Class',grep('^Z_GIS',colnames(gi_data),val=T),invert=T,val=T)
 gi_data[,z_cols] <- apply(new_gis[,2:ncol(new_gis)],2,scale)
+
+stop()
 
 write.table(gi_data,quote=F,file='table_s1_new.tsv',sep='\t')
 

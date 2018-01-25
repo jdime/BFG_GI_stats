@@ -17,20 +17,20 @@ update_gis <- function(gi_data,
                        g_wt_vec = c(12.62,8.34,8.44,7.04,7.7,7.84,7.5,7.76,6.94,6.28)) {
   #Define special pairs
   same_same <-
-    sapply(gi_data$Barcode_i, function(x) {
+    sapply(gi_data$Barcode_x, function(x) {
       strsplit(x, split = '_')[[1]][1]
-    }) == sapply(gi_data$Barcode_j, function(x) {
+    }) == sapply(gi_data$Barcode_y, function(x) {
       strsplit(x, split = '_')[[1]][1]
     })
   
   nn_pairs <-
-    gi_data$Type_of_gene_i == 'Neutral' &
-    gi_data$Type_of_gene_j == 'Neutral' &
+    gi_data$Type_of_gene_x == 'Neutral' &
+    gi_data$Type_of_gene_y == 'Neutral' &
     gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
   
   non_nn_unlinked_pairs <-
-    gi_data$Type_of_gene_i != 'Neutral' &
-    gi_data$Type_of_gene_j != 'Neutral' &
+    gi_data$Type_of_gene_x != 'Neutral' &
+    gi_data$Type_of_gene_y != 'Neutral' &
     gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
   
   #Add a pseudocount of 1
@@ -69,8 +69,8 @@ update_gis <- function(gi_data,
   w_xy_single_genes <- t(sapply(genes, function(gene) {
     criteria <-
       gi_data[, 1] == gene &
-      gi_data$Type_of_gene_j == 'Neutral' |
-      gi_data[, 2] == gene & gi_data$Type_of_gene_i == 'Neutral'
+      gi_data$Type_of_gene_y == 'Neutral' |
+      gi_data[, 2] == gene & gi_data$Type_of_gene_x == 'Neutral'
     criteria <-
       criteria &
       gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
@@ -78,7 +78,7 @@ update_gis <- function(gi_data,
     #Used to filter by counts, no need with error model
     #criteria <-
     #  criteria &
-    #  gi_data$C_ij.HetDipl >= well_measured_cutoff
+    #  gi_data$C_xy.HetDipl >= well_measured_cutoff
     
     return(apply(w_xy_data[criteria, ], 2, mean))
   }))
@@ -86,15 +86,15 @@ update_gis <- function(gi_data,
   g_xy_single_genes <- t(sapply(genes, function(gene) {
     criteria <-
       gi_data[, 1] == gene &
-      gi_data$Type_of_gene_j == 'Neutral' |
-      gi_data[, 2] == gene & gi_data$Type_of_gene_i == 'Neutral'
+      gi_data$Type_of_gene_y == 'Neutral' |
+      gi_data[, 2] == gene & gi_data$Type_of_gene_x == 'Neutral'
     criteria <-
       criteria &
       gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
     #Used to filter by counts, no need with error model
     #criteria <-
     #  criteria &
-    #  gi_data$C_ij.HetDipl >= well_measured_cutoff
+    #  gi_data$C_xy.HetDipl >= well_measured_cutoff
     
     return(apply(g_xy_data[criteria, ], 2, mean))
   }))
@@ -104,21 +104,21 @@ update_gis <- function(gi_data,
   g_xy_error_single_genes <- t(sapply(genes, function(gene) {
     criteria <-
       gi_data[, 1] == gene &
-      gi_data$Type_of_gene_j == 'Neutral' |
-      gi_data[, 2] == gene & gi_data$Type_of_gene_i == 'Neutral'
+      gi_data$Type_of_gene_y == 'Neutral' |
+      gi_data[, 2] == gene & gi_data$Type_of_gene_x == 'Neutral'
     criteria <-
       criteria &
       gi_data$Remove_by_Chromosomal_distance_or_SameGene == 'no'
     #Used to filter by counts, no need with error model
     #criteria <-
     #  criteria &
-    #  gi_data$C_ij.HetDipl >= well_measured_cutoff
-      return(apply(g_xy_data[criteria, ], 2, function(x){sd(x)/sqrt(length(x))}))
+    #  gi_data$C_xy.HetDipl >= well_measured_cutoff
+    return(apply(g_xy_data[criteria, ], 2, function(x){sd(x)/sqrt(length(x))}))
   }))
   
   
-  bc1 <- gi_data$Barcode_i
-  bc2 <- gi_data$Barcode_j
+  bc1 <- gi_data$Barcode_x
+  bc2 <- gi_data$Barcode_y
   
   gis <- t(sapply(1:nrow(w_xy_data), function(i) {
     w_x <- w_xy_single_genes[bc1[i], ]
@@ -280,23 +280,23 @@ update_gis <- function(gi_data,
   print(colnames(w_xy_error))
   # Set Some column names
   colnames(w_x_data) <- colnames(w_x_data) %>% sapply(function(name){
-    gsub('^C_ij.','W_i.', name)
+    gsub('^C_xy.','W_x.', name)
   })
   colnames(w_y_data) <- colnames(w_y_data) %>% sapply(function(name){
-    gsub('^C_ij.','W_j.', name)
+    gsub('^C_xy.','W_y.', name)
   })
   colnames(w_xy_data) <- colnames(w_xy_data) %>% sapply(function(name){
-    gsub('^C_ij.','W_ij.', name)
+    gsub('^C_xy.','W_xy.', name)
   })
   
   colnames(w_x_error) <- colnames(w_x_error) %>% sapply(function(name){
-    gsub('^C_ij.','W_i_SE.', name)
+    gsub('^C_xy.','W_x_SE.', name)
   })
   colnames(w_y_error) <- colnames(w_y_error) %>% sapply(function(name){
-    gsub('^C_ij.','W_j_SE.', name)
+    gsub('^C_xy.','W_y_SE.', name)
   })
   colnames(w_xy_error) <- colnames(w_x_error) %>% sapply(function(name){
-    gsub('^W_i_SE.','W_ij_SE.', name)
+    gsub('^W_x_SE.','W_xy_SE.', name)
   })
   
   

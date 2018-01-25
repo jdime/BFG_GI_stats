@@ -30,11 +30,11 @@ shu_complex <- c('CSM2','PSY3','SHU2','SHU1')
 
 
 
-gi_data$gene1 <- sapply(gi_data$Barcode_i, function(x) {
+gi_data$gene1 <- sapply(gi_data$Barcode_x, function(x) {
     strsplit(x, split = '_')[[1]][1]
   })
 
-gi_data$gene2 <- sapply(gi_data$Barcode_j, function(x) {
+gi_data$gene2 <- sapply(gi_data$Barcode_y, function(x) {
   strsplit(x, split = '_')[[1]][1]
 })
 
