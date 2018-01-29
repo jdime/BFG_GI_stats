@@ -1,21 +1,62 @@
-################################################################
-################################################################
-################################################################
-########                                                ########
-########                                                ########
-########     Pipeline for update of BFG-GI data         ########
-########                                                ########
-########                                                ########
-########                                                ########
-################################################################
-################################################################
-################################################################
-require(Cairo)
+##################################################################
+##################################################################
+##################################################################
+########                                                  ########
+########                                                  ########
+######## Pipeline to calculate Genetic Interaction Scores ########
+######## from Barcode Fusion Genetics experiments         ########
+######## and stastical evaluation of condition-dependent  ########
+######## genetic interactions                             ########         
+########                                                  ########
+########                                                  ########
+########                                                  ########
+##################################################################
+##################################################################
+##################################################################
 require(qvalue)
 require(dplyr)
 
-this.dir <- dirname(parent.frame(2)$ofile)
+### #Needs to be run from source, not Rscript or this line won't work
+### this_dir <- function() {
+###   cmdArgs <- commandArgs(trailingOnly = FALSE)
+###   needle <- "--file="
+###   match <- grep(needle, cmdArgs)
+###   if (length(match) > 0) {
+###     # Rscript
+###     return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+###   } else {
+###     # 'source'd via R console
+###     return(dirname(sys.frame(1)$ofile))
+###   }
+### }
+### this.dir <- this_dir()
+
+print(this.dir)
+
+### Get directory where 'master.R' is contained
+this.dir <- getwd() ### this must be the path to ~/.../BFG_GI_stats-master/scripts directory (where 'master.R' is contained)
 setwd(this.dir)
+
+### Create output and results directories
+resultsDir<-(sub("scripts", "results",this.dir))
+outputDir<-(sub("scripts", "output",this.dir))
+
+if (dir.exists(resultsDir) == T){
+## drectory already exists
+} else {
+    dir.create(resultsDir,recursive = T)
+
+}
+
+if (dir.exists(outputDir) == T){
+## drectory already exists
+} else {
+    dir.create(outputDir,recursive = T)
+
+}
+
+
+
 
 devtools::load_all('../packages/BfgGiStats')
 devtools::document('../packages/BfgGiStats')
@@ -57,6 +98,8 @@ colnames(gi_data) <- gsub(grep_pattern2, '', colnames(gi_data))
 
 
 #Remove non well-measured strains
+well_measured <- gi_data[, grep('HetDipl', colnames(gi_data))] >= 100
+gi_data <- gi_data[well_measured,]
 
 
 #For troubleshooting/checking
@@ -66,16 +109,38 @@ colnames(gi_data) <- gsub(grep_pattern2, '', colnames(gi_data))
 gi_data <- update_gis(gi_data,
                          #These values are empirically determined and have to be
                          #in the same order as in gi_data count columns
-                         g_wt_vec = c(12.62, 8.34, 7.84, 7.5, 6.94, 6.28, 7.76, 7.04, 7.7, 8.44))
+                         g_wt_vec = c('NoDrug' = 12.62,
+                                      'DMSO' = 8.34,
+                                      'MMS' = 7.84,
+                                      '4NQO' = 7.5,
+                                      'BLMC' = 6.94,
+                                      'ZEOC' = 6.28,
+                                      'HYDX' = 7.76,
+                                      'DXRB' = 7.04,
+                                      'CMPT' = 7.7,
+                                      'CSPL' = 8.44))
 
-#Remove camptothecin
-gi_data <- gi_data[, -grep('CMPT', colnames(gi_data))]
 
+#Analyze linkage patterns to justify above removal criteria
+setwd(this.dir)
+setwd('../results')
+pdf(file = 'GIS_NoDrug_vs_distance.pdf',
+                width = 4,
+                height = 4)
+par(mar=c(4.5,4.5,1,1))
+plot(log10(gi_data$Chromosomal_distance_bp + 1),
+     gi_data$GIS_xy.NoDrug,
+     xlab = expression(Log[10](Chromosomal~distance~+1)),
+     ylab = expression(GIS[xy]),
+     pch = 16,
+     col=rgb(0,0,0,0.3))
+abline(v= log10(75001),col='red',lty=3,lwd=2)
+dev.off()
 
 #Add p values columns
 setwd(this.dir)
 setwd('../results')
-Cairo::CairoPDF(file = 'Z_distribution.pdf',
+pdf(file = 'Z_distribution.pdf',
                 width = 12,
                 height = 5)
 par(mfrow = c(2, 5))
@@ -89,45 +154,44 @@ gi_data <-
   )
 dev.off()
 
+#Remove camptothecin
+gi_data <- gi_data[, -grep('CMPT', colnames(gi_data))]
 
 
 
 #Preserve at this step for differential gi_calls
-setwd(this.dir)
-setwd('../results')
-
-Cairo::CairoPDF(file = 'gis_well_measured_vs_non.pdf',
-                width = 4,
-                height = 3.5)
-par(mar=c(4,4,3,1))
 gi_data_old <- gi_data
-plot(density(as.matrix(
-  gi_data_old %>% filter(C_xy.HetDipl >= 100, Chromosomal_distance_bp == 0) %>% select(grep('^GIS_xy.', colnames(gi_data_old)))
-)), xlim = c(-1.1, 0.5),lwd=2,col='red',xlab='GIS',main='GIS of Same-Same Pairs')
-lines(density(as.matrix(
-  gi_data_old %>% filter(C_xy.HetDipl < 100, Chromosomal_distance_bp == 0) %>% select(grep('^GIS_xy.', colnames(gi_data_old)))
-)),
-col='blue',
-lwd='2'
-)
-legend(-0.1,3,
-       legend=c(expression(C[xy]>=100),
-                expression(C[xy]<100)),
-       col=c('red','blue'),
-       pch=15)
-dev.off()
 
-
-#Add filter for well-measured
-well_measured <- gi_data[, grep('HetDipl', colnames(gi_data))] >= 100
-gi_data <- gi_data[well_measured,]
+## Reviewer plot, have to temporarily allow non well-measured
+## strains for it to work
+# setwd(this.dir)
+# setwd('../results')
+# pdf(file = 'gis_well_measured_vs_non.pdf',
+#                 width = 4,
+#                 height = 3.5)
+# par(mar=c(4,4,3,1))
+# plot(density(as.matrix(
+#   gi_data_old %>% dplyr::filter(C_xy.HetDipl >= 100, Chromosomal_distance_bp == 0) %>% dplyr::select(grep('^GIS_xy.', colnames(gi_data_old)))
+# )), xlim = c(-1.1, 0.5),lwd=2,col='red',xlab='GIS',main='GIS of Same-Same Pairs')
+# lines(density(as.matrix(
+#   gi_data_old %>% dplyr::filter(C_xy.HetDipl < 100, Chromosomal_distance_bp == 0) %>% dplyr::select(grep('^GIS_xy.', colnames(gi_data_old)))
+# )),
+# col='blue',
+# lwd='2'
+# )
+# legend(-0.1,3,
+#        legend=c(expression(C[xy]>=100),
+#                 expression(C[xy]<100)),
+#        col=c('red','blue'),
+#        pch=15)
+# dev.off()
 
 
 #Make AUC plot
 setwd(this.dir)
 setwd('../results')
 
-Cairo::CairoPDF(file = 'auc_vs_st_onge_new.pdf',
+pdf(file = 'auc_vs_st_onge_new.pdf',
                 width = 7.5,
                 height = 4)
 par(mfrow = c(1, 2))
@@ -135,115 +199,48 @@ st_onge_auc_plot(gi_data)
 dev.off()
 
 #Score comparison scatterplot - by barcode
-Cairo::CairoPDF(file = 'st_onge_scatterplot_barcodewise.pdf',
+pdf(file = 'st_onge_scatterplot_barcodewise.pdf',
                 width = 7.5,
                 height = 3.5)
 par(mfrow = c(1, 2))
 st_onge_scatterplot(gi_data)
 dev.off()
 
-#stop()
 
 ########
 #Calculate a per-gene GI score, Z score, and p value
 ########
 gi_data <- average_gi_data_by_gene(gi_data)
 
-
-
-Cairo::CairoPDF(file = 'gene_averaged_p_value_histogram.pdf',
+#Make sure p-value distribution looks sane
+pdf(file = 'gene_averaged_p_value_histogram.pdf',
                 width = 5.5,
                 height = 4.5)
-hist(as.matrix(gi_data[, grep('^FDR', colnames(gi_data))]),
+hist(as.matrix(gi_data[, grep('^P.neutral', colnames(gi_data))]),
      main = '',
      xlab = 'p-value',
      col = 'grey30')
 dev.off()
 
 
+
 #Calculate FDR from per-gene p values
-gi_data[, grep('^FDR', colnames(gi_data))] <-
-  apply(gi_data[, grep('^FDR', colnames(gi_data))], 2, function(x) {
+gi_data[, grep('^P.neutral', colnames(gi_data))] <-
+  apply(gi_data[, grep('^P.neutral', colnames(gi_data))], 2, function(x) {
     qvalue(x)$q
   })
 
+fdr_colnames <-
+  sapply(grep('P.neut', colnames(gi_data), val = T), function(x) {
+    gsub('^P.', 'FDR.', x)
+  })
 
-#Make St Onge MCC and precision plot
-# setwd(this.dir)
-# setwd('../results')
-# 
-# 
-# performance_data <- gi_data
-# performance_data[, grep('^FDR', colnames(performance_data))] <-
-#   -log10(performance_data[, grep('^FDR', colnames(performance_data))]) *
-#   sign(performance_data[, grep('^GI', colnames(performance_data))])
-# performance_vs_st_onge <- make_performance_matrix(performance_data)
-# 
-# 
-# Cairo::CairoPDF(file = 'pos_perf_vs_st_onge.pdf',
-#                 width = 5,
-#                 height = 4)
-# #Plots and stores which values are best MCC
-# optim_pos <- performance_heatmap(
-#   performance_vs_st_onge$positive_interactions,
-#   xlab = '-Log10(FDR) Threshold',
-#   ylab = 'GIS Threshold',
-#   min_val = 0.5,
-#   max_val = 0.7,
-#   highlight_max_vals = T,
-#   add_legend = T,
-#   legend_title = 'MCC',
-#   main = 'MCC vs St. Onge (positive GIs)'
-# )[1, , drop = F]
-# dev.off()
-# 
-# Cairo::CairoPDF(file = 'neg_perf_vs_st_onge.pdf',
-#                 width = 5,
-#                 height = 4)
-# optim_neg <- performance_heatmap(
-#   performance_vs_st_onge$negative_interactions,
-#   xlab = '-Log10(FDR) Threshold',
-#   ylab = 'GIS Threshold',
-#   min_val = 0.5,
-#   max_val = 0.7,
-#   highlight_max_vals = T,
-#   add_legend = T,
-#   legend_title = 'MCC',
-#   main = 'MCC vs St. Onge (negative GIs)'
-# )[1, , drop = F]
-# dev.off()
-# 
-# 
-# ##Get cutoffs from performance matrix
-# log_fdr_cutoff_neg <-
-#   as.numeric(rownames(performance_vs_st_onge$negative_interactions)[optim_neg[1]])
-# gi_cutoff_neg <-
-#   as.numeric(colnames(performance_vs_st_onge$negative_interactions)[optim_neg[2]])
-# 
-# log_fdr_cutoff_pos <-
-#   as.numeric(rownames(performance_vs_st_onge$positive_interactions)[optim_pos[1]])
-# gi_cutoff_pos <-
-#   as.numeric(colnames(performance_vs_st_onge$positive_interactions)[optim_pos[2]])
-# 
-
+colnames(gi_data)[grep('^P.neutral', colnames(gi_data))] <- fdr_colnames
 
 
 setwd(this.dir)
 setwd('../results')
-# Cairo::CairoPDF(file = 'gi_mcc_vs_st_onge.pdf',
-#                 width = 4.5,
-#                 height = 4)
-# optim_cutoffs <-
-#   precision_vs_stonge(
-#     gi_data,
-#     fdr_cutoff = 0.05,
-#     metr = 'mat',
-#     xlims = c(-4, 4),
-#     ylab = "Matthew's Correlation Coefficient"
-#   )
-# dev.off()
-
-Cairo::CairoPDF(file = 'gi_prec_vs_st_onge.pdf',
+pdf(file = 'gi_prec_vs_st_onge.pdf',
                 width = 4.5,
                 height = 4)
 precision_vs_stonge(
@@ -255,24 +252,21 @@ precision_vs_stonge(
 dev.off()
 
 
-
-
-#Update calls based on optimal cutoffs
+#Update calls based on 1% FDR cutoffs
+#No effect sizes used, but option exists
 gi_data <- update_calls(
   gi_data,
-  fdr_cutoff_pos = 0.01,#10 ^ -2,#optim_cutoffs[2],
-  #log_fdr_cutoff_pos,
+  fdr_cutoff_pos = 0.01,
   gi_cutoff_pos = 0,
-  #-gi_cutoff_pos,
-  fdr_cutoff_neg = 0.01,#10 ^ -2,#optim_cutoffs[1],
-  #log_fdr_cutoff_neg,
+  fdr_cutoff_neg = 0.01,
   gi_cutoff_neg = 0
 )
 
 
 
 #Make gene-wise scatterplot
-Cairo::CairoPDF(file = 'st_onge_scatterplot_genewise.pdf',
+#Manuscript uses barcode-wise plot
+pdf(file = 'st_onge_scatterplot_genewise.pdf',
                 width = 7.5,
                 height = 3.5)
 par(mfrow = c(1, 2))
@@ -280,7 +274,7 @@ st_onge_scatterplot(gi_data)
 dev.off()
 
 
-###Write data
+###Write some data
 setwd(this.dir)
 setwd('../data')
 dir.create('output', showWarnings = FALSE)
@@ -323,18 +317,8 @@ write.table(
   file = 'table_s2_all.tsv'
 )
 
-#Plot some null distributions
-setwd(this.dir)
-setwd('../results')
-Cairo::CairoPDF(file = 'delta_gi_distribution.pdf',
-                width = 5,
-                height = 3)
-par(mar = c(4, 4, 1, 1))
-differential_calls_histogram(differential_calls)
-dev.off()
 
-
-#Filter for significance
+#Filter for significance and sign change
 differential_calls_sig <- differential_gi_analysis(
   gi_data,
   fdr_cutoff = 0.01,
@@ -342,14 +326,17 @@ differential_calls_sig <- differential_gi_analysis(
   require_sign_change = T
 )
 
-differential_calls_sig_no_sign <- differential_gi_analysis(
-  gi_data,
-  fdr_cutoff = 0.01,
-  delta_gi_cutoff = 0,
-  require_sign_change = F
-)
+#Can compare what happens if no sign change enforced
+#differential_calls_sig_no_sign <- differential_gi_analysis(
+#  gi_data,
+#  fdr_cutoff = 0.01,
+#  delta_gi_cutoff = 0,
+#  require_sign_change = F
+#)
 
 
+
+#Write some data
 setwd(this.dir)
 setwd('../data/output')
 write.table(
@@ -360,18 +347,20 @@ write.table(
   file = 'table_s2_significant.tsv'
 )
 
+
+#Looks at frequency of differetial calls by gene
 setwd(this.dir)
 setwd('../results')
-ddr_data <- filter(gi_data, Type_of_gene_x != "Neutral", Type_of_gene_y != "Neutral")
-genes <- unique(c(filtdat$Barcode_x,filtdat$Barcode_y))
+ddr_data <- dplyr::filter(gi_data, Type_of_gene_x != "Neutral", Type_of_gene_y != "Neutral")
+genes <- unique(c(ddr_data$Gene_x,ddr_data$Gene_y))
 differential_count <-
   sapply(genes, function(gene) {
     return(nrow(
-      filter(differential_calls_sig, Barcode_x == gene |
-               Barcode_y == gene)
+      dplyr::filter(differential_calls_sig, Gene_x == gene |
+               Gene_y == gene)
     ))
   })
-Cairo::CairoPDF(file = 'differential_inters_by_gene.pdf',
+pdf(file = 'differential_inters_by_gene.pdf',
                 width = 4,
                 height = 4)
 hist(
@@ -382,18 +371,19 @@ hist(
   ylab = 'Frequency (number of genes)',
   main = ''
 )
-dev.off()
+dev.off() 
 
 
+#Look at only sign reversals
 reversal_count <-
   sapply(genes, function(gene) {
     return(nrow(
-      filter(differential_calls_sig, Barcode_x == gene |
-               Barcode_y == gene, Class_Condition1 != "NEUTRAL", Class_Condition2 != "NEUTRAL")
+      dplyr::filter(differential_calls_sig, Gene_x == gene |
+               Gene_y == gene, Class_Condition1 != "Expected", Class_Condition2 != "Expected")
     ))
   })
 
-Cairo::CairoPDF(file = 'sign_reversals_by_gene.pdf',
+pdf(file = 'sign_reversals_by_gene.pdf',
                 width = 4,
                 height = 4)
 hist(
